@@ -14,20 +14,19 @@ import components.clients.curseforge.ClientSettings
 
 class CurseForgeProxyController @Inject()(
     val controllerComponents: ControllerComponents,
-    // val curseForgeClient: CurseForgeClient
+    val curseForgeClient: CurseForgeClient
 ) extends BaseController{
     val jsoner = new Gson() // TODO: to json manager
-    val curseForgeClient = new CommonCurseForgeClient(new ClientSettings("", ""))
 
     def callExternalApi() = Action {
         implicit request: Request[AnyContent] => {
             if (!request.hasBody)
                 BadRequest
-            val rawBody = request.body.asText
+            val rawBody = request.body.asJson
             if (!rawBody.isDefined)
                 BadRequest
-            val reqObj = jsoner.fromJson(rawBody.get, classOf[GetModsRequest])
-            val mods = curseForgeClient.getMods(reqObj)
+            val reqObj = jsoner.fromJson(rawBody.get.toString, classOf[GetModsRequest])
+            val mods = curseForgeClient.mods.getMods(reqObj)
             Ok(jsoner.toJson(mods))
         }
     }

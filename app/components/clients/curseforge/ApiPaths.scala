@@ -1,5 +1,7 @@
 package components.clients.curseforge
 
+
 object ApiPaths {
-  val searchMods = "/search/mods"
+  val mods = "mods"
+  val search = "search"
 }
