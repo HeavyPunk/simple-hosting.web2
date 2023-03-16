@@ -1,3 +1,5 @@
+maintainer := "simple-hosting@simplehosting.org"
+
 name := """simple-hosting.web2"""
 organization := "com.simplehosting"
 
