@@ -13,3 +13,5 @@ target
 /.g8
 /.metals
 /.bloop
+/thunder-tests
+

@@ -11,10 +11,6 @@ import java.net.http.HttpClient
 import java.net.http.HttpResponse.BodyHandlers
 
 class CommonCurseForgeModsClient(val settings: ClientSettings) extends CurseForgeModsClient{
-    var uriBuilder = new URIBuilder()
-        .setScheme("https")
-        .setHost(settings.host)
-        .setPathSegments("v1")
     var baseRequest = HttpRequest.newBuilder()
         .header("x-api-key", settings.apiKey)
         .header("Content-Type", "application/json")
@@ -22,9 +18,14 @@ class CommonCurseForgeModsClient(val settings: ClientSettings) extends CurseForg
     
     val jsoner = new Gson(); //TODO: to abstract json manager
 
+    def constructBaseUri() = new URIBuilder()
+        .setScheme("https")
+        .setHost(settings.host)
+        .setPathSegments("v1")
+
     override def getMods(request: GetModsRequest): GetModsResponse = { 
         val query = request.toQueryString()
-        val uri = uriBuilder
+        val uri = constructBaseUri()
             .setCustomQuery(query)
             .appendPathSegments(ApiPaths.mods, ApiPaths.search)
             .build()
