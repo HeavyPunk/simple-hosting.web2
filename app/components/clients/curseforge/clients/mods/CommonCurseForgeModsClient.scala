@@ -1,7 +1,7 @@
 package components.clients.curseforge.clients.mods
 
 import org.apache.hc.core5.net.URIBuilder
-import components.clients.curseforge.ClientSettings
+import components.clients.curseforge.CurseForgeClientSettings
 import java.net.http.HttpRequest
 import com.google.gson.Gson
 import components.clients.curseforge.ApiPaths
@@ -10,7 +10,7 @@ import components.clients.curseforge.models.GetModsResponse
 import java.net.http.HttpClient
 import java.net.http.HttpResponse.BodyHandlers
 
-class CommonCurseForgeModsClient(val settings: ClientSettings) extends CurseForgeModsClient{
+class CommonCurseForgeModsClient(val settings: CurseForgeClientSettings) extends CurseForgeModsClient{
     var baseRequest = HttpRequest.newBuilder()
         .header("x-api-key", settings.apiKey)
         .header("Content-Type", "application/json")

@@ -10,7 +10,7 @@ import dtos.curseforge.CallExternalApiResponse
 import dtos.curseforge.CallExternalApiRequest
 import com.google.gson.Gson
 import components.clients.curseforge.CommonCurseForgeClient
-import components.clients.curseforge.ClientSettings
+import components.clients.curseforge.CurseForgeClientSettings
 
 class CurseForgeProxyController @Inject()(
     val controllerComponents: ControllerComponents,
