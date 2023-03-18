@@ -4,7 +4,7 @@ class CallExternalApiRequest (
     val gameId: Int,
     val searchFilter: Option[String],
     val sortField: Option[Int],
-    val sortOrder: Option[Int],
+    val sortOrder: Option[String],
     val slug: Option[String],
     val modloaderType: Option[Int],
     val gameVersion: Option[String],
