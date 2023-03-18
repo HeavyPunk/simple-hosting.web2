@@ -1,6 +1,6 @@
-package dtos.curseforge
+package dtos.curseforge.mods
 
-class CallExternalApiRequest (
+class SearchModsRequest (
     val gameId: Int,
     val searchFilter: Option[String],
     val sortField: Option[Int],

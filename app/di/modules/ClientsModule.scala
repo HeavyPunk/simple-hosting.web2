@@ -6,7 +6,7 @@ import components.clients.curseforge.CurseForgeClient
 import components.clients.curseforge.CurseForgeClientSettings
 import components.clients.curseforge.clients.mods.CommonCurseForgeModsClient
 
-class ClientsModule extends AbstractModule{
+class ClientsModule extends AbstractModule {
     override def configure() = {
         val clientSettings = CurseForgeClientSettings(
             "api.curseforge.com", 
