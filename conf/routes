@@ -4,3 +4,7 @@ GET /assets/*file controllers.Assets.versioned(path="/public", file: Asset)
 
 GET /external/curseforge/mods/search controllers.CurseForgeProxyController.searchMods()
 GET /external/curseforge/mods/:id controllers.CurseForgeProxyController.getModById(id: Int)
+GET /external/curseforge/mods/:id/description controllers.CurseForgeProxyController.getModFullDescription(id: Int)
+
+GET /external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
+GET /external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()

@@ -1,0 +1,11 @@
+package components.clients.curseforge.clients.softwares
+
+import components.clients.curseforge.models.GetMinecraftVersionsRequest
+import components.clients.curseforge.models.GetMinecraftVersionsResponse
+import components.clients.curseforge.models.GetMinecraftModloadersRequest
+import components.clients.curseforge.models.GetMinecraftModloadersResponse
+
+trait CurseForgeSoftwaresClient {
+  def getMinecraftVersions(request: GetMinecraftVersionsRequest): GetMinecraftVersionsResponse
+  def getMinecraftModloaders(request: GetMinecraftModloadersRequest): GetMinecraftModloadersResponse
+}

@@ -1,17 +1,18 @@
 package controllers
 
-import javax.inject.Inject
-import play.api.mvc.ControllerComponents
-import play.api.mvc.BaseController
-import play.api.mvc._
-import components.clients.curseforge.CurseForgeClient
-import components.clients.curseforge.models.GetModsRequest
-import dtos.curseforge.mods.SearchModsRequest
-import dtos.curseforge.mods.SearchModsResponse
 import com.google.gson.Gson
-import components.clients.curseforge.CommonCurseForgeClient
 import com.google.gson.GsonBuilder
+import components.clients.curseforge.CommonCurseForgeClient
+import components.clients.curseforge.CurseForgeClient
+import components.clients.curseforge.models.GetMinecraftModloadersRequest
+import components.clients.curseforge.models.GetMinecraftVersionsRequest
+import components.clients.curseforge.models.SearchModsRequest
 import components.services.serializer.JsonService
+import play.api.mvc.BaseController
+import play.api.mvc.ControllerComponents
+import play.api.mvc._
+
+import javax.inject.Inject
 
 class CurseForgeProxyController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -26,7 +27,7 @@ class CurseForgeProxyController @Inject()(
             val rawBody = request.body.asJson
             if (!rawBody.isDefined)
                 BadRequest
-            val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetModsRequest])
+            val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[SearchModsRequest])
             val mods = curseForgeClient.mods.getMods(reqObj)
             Ok(jsonizer.serialize(mods))
         }
@@ -36,6 +37,39 @@ class CurseForgeProxyController @Inject()(
         implicit request: Request[AnyContent] => {
             val mod = curseForgeClient.mods.getModById(id)
             Ok(jsonizer.serialize(mod))
+        }
+    }
+
+    def getModFullDescription(id: Int) = Action {
+        implicit request: Request[AnyContent] => {
+            val description = curseForgeClient.mods.getModFullDescription(id)
+            Ok(jsonizer.serialize(description))
+        }
+    }
+
+    def getMinecraftVersions() = Action {
+        implicit request: Request[AnyContent] => {
+            if (!request.hasBody)
+                BadRequest
+            val rawBody = request.body.asJson
+            if (!rawBody.isDefined)
+                BadRequest
+            val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetMinecraftVersionsRequest])
+            val versions = curseForgeClient.softwares.getMinecraftVersions(reqObj)
+            Ok(jsonizer.serialize(versions))
+        }
+    }
+
+    def getMinecraftModloaders() = Action {
+        implicit request: Request[AnyContent] => {
+            if (!request.hasBody)
+                BadRequest
+            val rawBody = request.body.asJson
+            if (!rawBody.isDefined)
+                BadRequest
+            val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetMinecraftModloadersRequest])
+            val modloaders = curseForgeClient.softwares.getMinecraftModloaders(reqObj)
+            Ok(jsonizer.serialize(modloaders))
         }
     }
 }

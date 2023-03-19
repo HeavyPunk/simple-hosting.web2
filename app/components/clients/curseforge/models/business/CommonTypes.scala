@@ -1,48 +1,70 @@
 package components.clients.curseforge.models.business
 
+import com.fasterxml.jackson.annotation.JsonAlias
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.google.gson.annotations.SerializedName
 
 class Mod (
-    @SerializedName("id") val id: Int,
-    @SerializedName("name") val name: String,
-    @SerializedName("slug") val slug: String,
-    @SerializedName("summary") val summary: String,
-    @SerializedName("downloadCount") val downloadCount: Int,
-    @SerializedName("classId") val classId: Int,
-    @SerializedName("links") val links: Links,
-    @SerializedName("categories") val categories: Array[Category],
-    @SerializedName("authors") val authors: Array[Author],
-    @SerializedName("logo") val logo: Picture,
-    @SerializedName("screenshots") val screenshots: Array[Picture],
-    @SerializedName("dateCreated") val dateCreated: String,
-    @SerializedName("dateModified") val dateModified: String,
+    val id: Int,
+    val name: String,
+    val slug: String,
+    val summary: String,
+    val downloadCount: Int,
+    val classId: Int,
+    val links: Links,
+    val categories: Array[Category],
+    val authors: Array[Author],
+    val logo: Picture,
+    val screenshots: Array[Picture],
+    val dateCreated: String,
+    val dateModified: String,
 )
 
 class Picture (
-    @SerializedName("id") val id: Int,
-    @SerializedName("title") val title: String,
-    @SerializedName("description") val description: String,
-    @SerializedName("url") val url: String,
-    @SerializedName("thumbnailUrl") val thumbnailUrl: String
+    val id: Int,
+    val title: String,
+    val description: String,
+    val url: String,
+    val thumbnailUrl: String
 )
 
 class Links (
-    @SerializedName("websiteUrl") val websiteUrl: String,
+    val websiteUrl: String,
 )
 
 class ModDescription (
-    @SerializedName("data") val description: String
+    val description: String
 )
 
 class Category (
-    @SerializedName("id") val id: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("slug") val slug: String,
-    @SerializedName("classId") val classId: Int
+    val id: String,
+    val name: String,
+    val slug: String,
+    val classId: Int
 )
 
 class Author (
-    @SerializedName("id") val id: Int,
-    @SerializedName("name") val name: String,
-    @SerializedName("url") val url: String
+    val id: Int,
+    val name: String,
+    val url: String
+)
+
+class MinecraftVersion (
+    @JsonProperty("version") @JsonAlias(Array("versionString"))
+    val versionString: String,
+    val gameVersionId: Int
+)
+
+class Modloader (
+    val gameVersion: String,
+    @JsonProperty("modloaderVersion") @JsonAlias(Array("name")) 
+    val name: String,
+    val latest: Boolean,
+    val recommended: Boolean,
+)
+
+class ModloaderVersion (
+    val gameVersion: String,
+    val slug: String,
+    val versions: Array[Modloader]
 )
