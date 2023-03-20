@@ -1,10 +1,20 @@
 package components.clients.curseforge.models
 
-class GetModsRequest(
+import components.clients.curseforge.models.business.Mod
+
+class GetModResponse (
+  	val data: Mod
+)
+
+class GetModFullDescriptionResponse (
+		val data: String
+)
+
+class SearchModsRequest (
     val gameId: Int,
     val searchFilter: Option[String],
     val sortField: Option[Int],
-    val sortOrder: Option[Int],
+    val sortOrder: Option[String],
     val slug: Option[String],
     val modloaderType: Option[Int],
     val gameVersion: Option[String],
@@ -12,7 +22,7 @@ class GetModsRequest(
     val index: Option[Int],
     val pageSize: Option[Int],
     val categoryId: Option[Int],
-    val classId: Option[Int]){
+    val classId: Option[Int]) {
     def toQueryString(): String = {
         val builder = new StringBuilder(s"gameId=${gameId}")
         if (searchFilter != null && searchFilter.isDefined) builder.addAll(s"&searchFilter=${searchFilter.get}")
@@ -29,3 +39,7 @@ class GetModsRequest(
         builder.toString
     }
 }
+
+class SearchModsResponse (
+    val data: Array[Mod]
+)
