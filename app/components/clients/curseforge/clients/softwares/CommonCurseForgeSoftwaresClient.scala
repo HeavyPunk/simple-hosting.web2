@@ -8,6 +8,7 @@ import components.clients.curseforge.models.GetMinecraftModloadersResponse
 import components.clients.curseforge.models.GetMinecraftVersionsRequest
 import components.clients.curseforge.models.GetMinecraftVersionsResponse
 import components.clients.curseforge.models.ModloadersResponse
+import components.clients.curseforge.models.business.Modloader
 import components.clients.curseforge.models.business.ModloaderVersion
 import components.services.serializer.JsonService
 import org.apache.hc.core5.net.URIBuilder
@@ -60,13 +61,15 @@ class CommonCurseForgeSoftwaresClient @Inject()(
 		val modloadersMap = collection.mutable.Map[String, ModloaderVersion]()
 
 		for (elem <- modloaders.data) {
+			val elemNewName = elem.name.split("-")(1)
+
 			if (elem.latest == true || elem.recommended == true) {
 				val mapElem = modloadersMap.getOrElse(elem.gameVersion, null)
 				if (mapElem == null) {
-					modloadersMap(elem.gameVersion) = new ModloaderVersion(elem.gameVersion, elem.name, Array(elem))
+					modloadersMap(elem.gameVersion) = new ModloaderVersion(elem.gameVersion, Array(new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest)))
 				} else if (mapElem.versions.length == 1) {
 					val modloaderVersions = mapElem.versions
-					modloadersMap(elem.gameVersion) = new ModloaderVersion(elem.gameVersion, elem.name, modloaderVersions.appended(elem))
+					modloadersMap(elem.gameVersion) = new ModloaderVersion(elem.gameVersion, modloaderVersions.appended(new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest)))
 				}
 			}
 		}

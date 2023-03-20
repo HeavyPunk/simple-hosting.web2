@@ -59,12 +59,12 @@ class Modloader (
     val gameVersion: String,
     @JsonProperty("modloaderVersion") @JsonAlias(Array("name")) 
     val name: String,
+    val formattedVersion: String,
     val latest: Boolean,
     val recommended: Boolean,
 )
 
 class ModloaderVersion (
     val gameVersion: String,
-    val slug: String,
     val versions: Array[Modloader]
 )
