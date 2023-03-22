@@ -15,4 +15,5 @@ target
 /.bloop
 /thunder-tests
 /project/project
+/project/target
 /project/.bloop
