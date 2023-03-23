@@ -8,3 +8,6 @@ GET /external/curseforge/mods/:id/description controllers.CurseForgeProxyControl
 
 GET /external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
 GET /external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()
+
+GET /external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
+GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass()

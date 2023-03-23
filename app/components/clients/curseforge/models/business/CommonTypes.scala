@@ -1,10 +1,11 @@
 package components.clients.curseforge.models.business
 
 import com.fasterxml.jackson.annotation.JsonAlias
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.google.gson.annotations.SerializedName
 
-class Mod (
+class Mod(
     val id: Int,
     val name: String,
     val slug: String,
@@ -17,10 +18,10 @@ class Mod (
     val logo: Picture,
     val screenshots: Array[Picture],
     val dateCreated: String,
-    val dateModified: String,
+    val dateModified: String
 )
 
-class Picture (
+class Picture(
     val id: Int,
     val title: String,
     val description: String,
@@ -28,43 +29,45 @@ class Picture (
     val thumbnailUrl: String
 )
 
-class Links (
-    val websiteUrl: String,
+class Links(
+    val websiteUrl: String
 )
 
-class ModDescription (
+class ModDescription(
     val description: String
 )
 
-class Category (
+class Category(
     val id: String,
     val name: String,
     val slug: String,
-    val classId: Int
+    val classId: Int,
+    val parentCategoryId: Int,
+    val isClass: Option[Boolean]
 )
 
-class Author (
+class Author(
     val id: Int,
     val name: String,
     val url: String
 )
 
-class MinecraftVersion (
+class MinecraftVersion(
     @JsonProperty("version") @JsonAlias(Array("versionString"))
     val versionString: String,
     val gameVersionId: Int
 )
 
-class Modloader (
+class Modloader(
     val gameVersion: String,
-    @JsonProperty("modloaderVersion") @JsonAlias(Array("name")) 
+    @JsonProperty("modloaderVersion") @JsonAlias(Array("name"))
     val name: String,
     val formattedVersion: String,
     val latest: Boolean,
-    val recommended: Boolean,
+    val recommended: Boolean
 )
 
-class ModloaderVersion (
+class ModloaderVersion(
     val gameVersion: String,
     val versions: Array[Modloader]
 )
