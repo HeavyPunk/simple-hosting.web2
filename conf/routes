@@ -11,3 +11,5 @@ GET /external/curseforge/softwares/modloaders controllers.CurseForgeProxyControl
 
 GET /external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
 GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass()
+
+POST /servers/compositor/create-server controllers.ServerControlController.createServer()

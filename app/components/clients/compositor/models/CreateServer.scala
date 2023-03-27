@@ -1,0 +1,18 @@
+package components.clients.compositor.models
+
+import com.fasterxml.jackson.annotation.JsonProperty
+
+class CreateServerRequest (
+    @JsonProperty("image-uri") val vmImageUri: String,
+    @JsonProperty("name") val vmName: String,
+    @JsonProperty("ram") val vmAvailableRamBytes: Long,
+    @JsonProperty("disk") val vmAvailableDiskBytes: Long,
+    @JsonProperty("swap") val vmAvailableSwapBytes: Long,
+    @JsonProperty("ports") val vmExposePorts: Array[String]
+)
+
+class CreateServerResponse (
+    @JsonProperty("vm-id") val vmId: String,
+)
+
+
