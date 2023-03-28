@@ -49,10 +49,11 @@ class CommonCurseForgeCategoriesClient @Inject() (
     val classIds      = List[Int](5, 6, 12, 17, 4471).toArray
 
     for (classId <- classIds) {
-      val mainClass       = categories.data.find(c => c.id == classId.toString).get
+      val mainClass       = categories.data.find(c => c.id == classId).get
       val classCategories = categories.data.filter(c => c.classId == classId && c.classId == c.parentCategoryId)
 
-      categoriesMap(classId.toString) = new GroupedCategory(mainClass.name, classCategories.sortBy(_.name.toLowerCase))
+      categoriesMap(classId.toString) =
+        new GroupedCategory(mainClass.id, mainClass.name, classCategories.sortBy(_.name.toLowerCase))
     }
 
     val formattedCategories = categoriesMap.values.toArray

@@ -38,7 +38,7 @@ class ModDescription(
 )
 
 class Category(
-    val id: String,
+    val id: Int,
     val name: String,
     val slug: String,
     val classId: Int,

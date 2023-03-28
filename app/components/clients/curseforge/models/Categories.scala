@@ -22,6 +22,7 @@ class GetCategoriesResponse(
 )
 
 class GroupedCategory(
+    val classId: Int,
     val className: String,
     val categories: Array[Category]
 )
