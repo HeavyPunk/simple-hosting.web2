@@ -13,3 +13,9 @@ GET /external/curseforge/categories controllers.CurseForgeProxyController.getCat
 GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass()
 
 POST /servers/compositor/create-server controllers.ServerControlController.createServer()
+
+POST /servers/compositor/stop-server controllers.ServerControlController.stopServer()
+
+POST /servers/compositor/start-server controllers.ServerControlController.startServer()
+
+POST /servers/compositor/remove-server controllers.ServerControlController.removeServer()
