@@ -8,4 +8,5 @@ object ApiPaths {
   val versions    = "version"
   val modloaders  = "modloader"
   val categories  = "categories"
+  val files       = "files"
 }

@@ -16,7 +16,7 @@ class SearchModsRequest(
     val sortField: Option[Int],
     val sortOrder: Option[String],
     val slug: Option[String],
-    val modloaderType: Option[Int],
+    val modLoaderType: Option[Int],
     val gameVersion: Option[String],
     val gameVersionTypeId: Option[Int],
     val index: Option[Int],
@@ -31,8 +31,8 @@ class SearchModsRequest(
     if (sortField != null && sortField.isDefined) builder.addAll(s"&sortField=${sortField.get}")
     if (sortOrder != null && sortOrder.isDefined) builder.addAll(s"&sortOrder=${sortOrder.get}")
     if (slug != null && slug.isDefined) builder.addAll(s"&slug=${slug.get}")
-    if (modloaderType != null && modloaderType.isDefined)
-      builder.addAll(s"&modloaderType=${modloaderType.get}")
+    if (modLoaderType != null && modLoaderType.isDefined)
+      builder.addAll(s"&modLoaderType=${modLoaderType.get}")
     if (gameVersion != null && gameVersion.isDefined)
       builder.addAll(s"&gameVersion=${gameVersion.get}")
     if (gameVersionTypeId != null && gameVersionTypeId.isDefined)
