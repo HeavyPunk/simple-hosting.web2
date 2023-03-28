@@ -7,6 +7,8 @@ import components.clients.curseforge.CurseForgeClient
 import components.clients.curseforge.models.GetCategoriesRequest
 import components.clients.curseforge.models.GetMinecraftModloadersRequest
 import components.clients.curseforge.models.GetMinecraftVersionsRequest
+import components.clients.curseforge.models.GetModFileByFileIdRequest
+import components.clients.curseforge.models.GetModFilesByModIdRequest
 import components.clients.curseforge.models.SearchModsRequest
 import components.services.serializer.JsonService
 import play.api.mvc.BaseController
@@ -91,6 +93,48 @@ class CurseForgeProxyController @Inject() (
     {
       val categories = curseForgeClient.categories.getCategoriesGroupedByClass()
       Ok(jsonizer.serialize(categories))
+    }
+  }
+
+  def getModFilesByModId() = Action { implicit request: Request[AnyContent] =>
+    {
+      if (!request.hasBody)
+        BadRequest
+      val rawBody = request.body.asJson
+      if (!rawBody.isDefined)
+        BadRequest
+      val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetModFilesByModIdRequest])
+
+      val files = curseForgeClient.files.getModFilesByModId(reqObj)
+      Ok(jsonizer.serialize(files))
+    }
+  }
+
+  def getModFileByFileId() = Action { implicit request: Request[AnyContent] =>
+    {
+      if (!request.hasBody)
+        BadRequest
+      val rawBody = request.body.asJson
+      if (!rawBody.isDefined)
+        BadRequest
+      val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetModFileByFileIdRequest])
+
+      val file = curseForgeClient.files.getModFileByFileId(reqObj)
+      Ok(jsonizer.serialize(file))
+    }
+  }
+
+  def getFileDownloadUrls() = Action { implicit request: Request[AnyContent] =>
+    {
+      if (!request.hasBody)
+        BadRequest
+      val rawBody = request.body.asJson
+      if (!rawBody.isDefined)
+        BadRequest
+      val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[GetModFilesByModIdRequest])
+
+      val urls = curseForgeClient.files.getFileDownloadUrls(reqObj)
+      Ok(jsonizer.serialize(urls))
     }
   }
 }

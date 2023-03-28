@@ -2,15 +2,16 @@ GET / controllers.HomeController.index()
 
 GET /assets/*file controllers.Assets.versioned(path="/public", file: Asset)
 
-GET /external/curseforge/mods/search controllers.CurseForgeProxyController.searchMods()
+POST /external/curseforge/mods/search controllers.CurseForgeProxyController.searchMods()
 GET /external/curseforge/mods/:id controllers.CurseForgeProxyController.getModById(id: Int)
 GET /external/curseforge/mods/:id/description controllers.CurseForgeProxyController.getModFullDescription(id: Int)
 
-GET /external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
-GET /external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()
+POST /external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
+POST /external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()
 
-GET /external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
-GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass()
+POST /external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
+GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass() 
+
 
 POST /servers/compositor/create-server controllers.ServerControlController.createServer()
 
@@ -19,3 +20,7 @@ POST /servers/compositor/stop-server controllers.ServerControlController.stopSer
 POST /servers/compositor/start-server controllers.ServerControlController.startServer()
 
 POST /servers/compositor/remove-server controllers.ServerControlController.removeServer()
+
+POST /external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
+POST /external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
+POST /external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()
