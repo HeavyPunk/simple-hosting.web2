@@ -3,7 +3,6 @@ package components.clients.curseforge.models.business
 import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.google.gson.annotations.SerializedName
 
 class Mod(
     val id: Int,

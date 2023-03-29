@@ -1,7 +1,5 @@
 package controllers
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import components.clients.curseforge.CommonCurseForgeClient
 import components.clients.curseforge.CurseForgeClient
 import components.clients.curseforge.models.GetCategoriesRequest

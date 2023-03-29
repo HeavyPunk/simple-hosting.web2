@@ -3,32 +3,38 @@ package components.clients.compositor.models
 import com.fasterxml.jackson.annotation.JsonProperty
 
 class CreateServerRequest (
-    @JsonProperty("image-uri") val vmImageUri: String,
     @JsonProperty("name") val vmName: String,
-    @JsonProperty("ram") val vmAvailableRamBytes: Long,
-    @JsonProperty("disk") val vmAvailableDiskBytes: Long,
-    @JsonProperty("swap") val vmAvailableSwapBytes: Long,
-    @JsonProperty("ports") val vmExposePorts: Array[String]
+    @JsonProperty("version") val version: String,
+    @JsonProperty("tariffId") val tariffId: String,
+    @JsonProperty("rent-time") val rentTime: String,
+    @JsonProperty("slots-count") val slotsCount: Int,
 )
 
 class CreateServerResponse (
-    @JsonProperty("vm-id") val vmId: String,
-)
-
-class StartServerRequest (
-    @JsonProperty("vm-id") val vmId: String
-)
-
-class StartServerResponse (
-    @JsonProperty("vm-id") val vmId: String,
-    @JsonProperty("ip") val vmWhiteIp: String,
-    @JsonProperty("ports") val vmWhitePorts: Array[String],
+    @JsonProperty("game-server-id") val gameServerId: String,
     @JsonProperty("success") val success: Boolean,
     @JsonProperty("error") val error: String,
 )
 
+class StartServerRequest (
+    @JsonProperty("game-server-id") val gameServerId: String,
+)
+
+class StartServerResponse (
+    @JsonProperty("game-server-id") val gameServerId: String,
+    @JsonProperty("ip") val vmWhiteIp: String,
+    @JsonProperty("ports") val vmWhitePorts: Array[PortDescription],
+    @JsonProperty("success") val success: Boolean,
+    @JsonProperty("error") val error: String,
+)
+
+class PortDescription (
+    @JsonProperty("port-kind") val portKind: String,
+    @JsonProperty("port") val ports: String,
+)
+
 class StopServerRequest (
-    @JsonProperty("vm-id") val vmId: String
+    @JsonProperty("game-server-id") val gameServerId: String,
 )
 class StopServerResponse (
     @JsonProperty("success") val success: Boolean,
@@ -36,7 +42,7 @@ class StopServerResponse (
 )
 
 class RemoveServerRequest (
-    @JsonProperty("vm-id") val vmId: String
+    @JsonProperty("game-server-id") val gameServerId: String,
 )
 
 class RemoveServerResponse (

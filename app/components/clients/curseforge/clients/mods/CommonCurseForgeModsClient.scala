@@ -1,6 +1,5 @@
 package components.clients.curseforge.clients.mods
 
-import com.google.gson.Gson
 import components.clients.curseforge.ApiPaths
 import components.clients.curseforge.CurseForgeClientSettings
 import components.clients.curseforge.models.GetModFullDescriptionResponse

@@ -13,7 +13,6 @@ libraryDependencies += guice
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test
 
 libraryDependencies += "org.apache.httpcomponents.client5" % "httpclient5"          % "5.2.1"
-libraryDependencies += "com.google.code.gson"              % "gson"                 % "2.10.1"
 libraryDependencies += "com.fasterxml.jackson.module"     %% "jackson-module-scala" % "2.14.1"
 libraryDependencies += "io.github.heavypunk" %% "simple-hosting.compositor.client" % "1.0.1" from "https://github.com/HeavyPunk/simple-hosting.compositor.client/raw/main/build/simple-hosting-compositor-client.jar"
 

@@ -11,11 +11,14 @@ import java.time.Duration
 import play.api.mvc.ControllerComponents
 import components.clients.compositor.models.{CreateServerResponse, StopServerRequest}
 import io.github.heavypunk.compositor.client
-import components.clients.compositor.models.StopServerResponse
-import components.clients.compositor.models.StartServerRequest
-import components.clients.compositor.models.StartServerResponse
-import components.clients.compositor.models.RemoveServerRequest
-import components.clients.compositor.models.RemoveServerResponse
+import components.clients.compositor.models.{
+    StopServerResponse,
+    StartServerRequest,
+    StartServerResponse,
+    RemoveServerRequest,
+    RemoveServerResponse,
+    PortDescription
+}
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -33,15 +36,15 @@ class ServerControlController @Inject()(
         
         val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[CreateServerRequest])
         val resp = compositorClient.createServer(new io.github.heavypunk.compositor.client.models.CreateServerRequest(
-            reqObj.vmImageUri,
+            "",
             reqObj.vmName,
-            reqObj.vmAvailableRamBytes,
-            reqObj.vmAvailableDiskBytes,
-            reqObj.vmAvailableSwapBytes,
-            reqObj.vmExposePorts
+            0,
+            0,
+            0,
+            Array("")
         ), Duration.ofMinutes(2))
         
-        Ok(jsonizer.serialize(new CreateServerResponse(resp.vmId)))
+        Ok(jsonizer.serialize(new CreateServerResponse(resp.vmId, true, "")))
     }}
 
     def stopServer() = Action { implicit request: Request[AnyContent] => {
@@ -51,7 +54,7 @@ class ServerControlController @Inject()(
         if (!rawBody.isDefined)
             BadRequest
         val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopServerRequest])
-        val resp = compositorClient.stopServer(new io.github.heavypunk.compositor.client.models.StopServerRequest(reqObj.vmId), Duration.ofMinutes(2))
+        val resp = compositorClient.stopServer(new io.github.heavypunk.compositor.client.models.StopServerRequest(reqObj.gameServerId), Duration.ofMinutes(2))
         
         Ok(jsonizer.serialize(new StopServerResponse(resp.success, "")))
     }}
@@ -64,8 +67,8 @@ class ServerControlController @Inject()(
         if (!rawBody.isDefined)
             BadRequest
         val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartServerRequest])
-        val resp = compositorClient.startServer(new io.github.heavypunk.compositor.client.models.StartServerRequest(reqObj.vmId), Duration.ofMinutes(2))
-        Ok(jsonizer.serialize(new StartServerResponse(resp.vmId, resp.vmWhiteIp, resp.vmWhitePorts, true, "")))
+        val resp = compositorClient.startServer(new io.github.heavypunk.compositor.client.models.StartServerRequest(reqObj.gameServerId), Duration.ofMinutes(2))
+        Ok(jsonizer.serialize(new StartServerResponse(resp.vmId, resp.vmWhiteIp, Array(new PortDescription("", "")), true, "")))
     }}
 
     def removeServer() = Action { implicit request: Request[AnyContent] => {
@@ -77,7 +80,7 @@ class ServerControlController @Inject()(
             BadRequest
         val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[RemoveServerRequest])
         val resp = compositorClient.removeServer(new io.github.heavypunk.compositor.client.models.RemoveServerRequest(
-            reqObj.vmId
+            reqObj.gameServerId
         ), Duration.ofMinutes(2))
         Ok(jsonizer.serialize(new RemoveServerResponse(resp.success, resp.error)))
     }}
