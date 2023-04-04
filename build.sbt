@@ -10,11 +10,20 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.13.10"
 
 libraryDependencies += guice
+libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test
 
 libraryDependencies += "org.apache.httpcomponents.client5" % "httpclient5"          % "5.2.1"
 libraryDependencies += "com.fasterxml.jackson.module"     %% "jackson-module-scala" % "2.14.1"
 libraryDependencies += "io.github.heavypunk" %% "simple-hosting.compositor.client" % "1.0.1" from "https://github.com/HeavyPunk/simple-hosting.compositor.client/raw/main/build/simple-hosting-compositor-client.jar"
+
+//Hibernate dependency
+libraryDependencies ++= Seq(
+    "org.hibernate" % "hibernate-core" % "6.2.0.Final",
+    "org.hibernate" % "hibernate-entitymanager" % "4.1.8.Final",
+    // https://mvnrepository.com/artifact/org.postgresql/postgresql
+    "org.postgresql" % "postgresql" % "42.5.1",
+)
 
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "com.simplehosting.controllers._"
