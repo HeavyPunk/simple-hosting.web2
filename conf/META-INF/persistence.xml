@@ -5,7 +5,7 @@
 
     <persistence-unit name="com.simplehosting.relation.jpa">
         <description>
-            Persistence unit for the Jakarta Persistence tutorial of the Hibernate Getting Started Guide
+            Persistence unit for the relation database
         </description>
 
         <class>business.entities.User</class>
@@ -25,6 +25,19 @@
             <property name="hibernate.format_sql" value="true" />
             <property name="hibernate.hbm2ddl.auto" value="update" />
             <property name="hibernate.jdbc.time_zone" value="UTC"/>
+        </properties>
+
+    </persistence-unit>
+
+    <persistence-unit name="com.simplehosting.document.jpa">
+        <description>
+            Persistance unit for the document-oriented entities
+        </description>
+
+        <class>business.entities.FileBucketFile</class>
+
+        <properties>
+            <property name="" value="" />
         </properties>
 
     </persistence-unit>

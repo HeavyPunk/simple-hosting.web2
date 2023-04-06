@@ -8,11 +8,11 @@ import business.entities.GameServer
 
 class HibernateTests extends munit.FunSuite {
     val testDescContext = "[Hibernate]"
+    val em = Persistence
+        .createEntityManagerFactory("com.simplehosting.relation.jpa")
+        .createEntityManager()
     
     test(s"$testDescContext Insert user") {
-        val em = Persistence
-            .createEntityManagerFactory("com.simplehosting.relation.jpa")
-            .createEntityManager()
         assert(em.isOpen())
         val user = new User()
         user.login = "user"
@@ -25,9 +25,6 @@ class HibernateTests extends munit.FunSuite {
     }
 
     test(s"$testDescContext Insert game server") {
-        val em = Persistence
-            .createEntityManagerFactory("com.simplehosting.relation.jpa")
-            .createEntityManager()
         assert(em.isOpen())
 
         val server = new GameServer()
@@ -43,9 +40,6 @@ class HibernateTests extends munit.FunSuite {
     }
 
     test(s"$testDescContext Read game server") {
-        val em = Persistence
-            .createEntityManagerFactory("com.simplehosting.relation.jpa")
-            .createEntityManager()
         assert(em.isOpen())
 
         val user = em.find(classOf[GameServer], 1)
