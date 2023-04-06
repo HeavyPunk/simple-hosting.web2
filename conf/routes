@@ -21,6 +21,10 @@ POST /servers/compositor/start-server controllers.ServerControlController.startS
 
 POST /servers/compositor/remove-server controllers.ServerControlController.removeServer()
 
+POST /servers/controller/start-server controllers.GameServerControlController.startServer()
+
+POST /servers/controller/stop-server controllers.GameServerControlController.stopServer()
+
 POST /external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
 POST /external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
 POST /external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()
