@@ -15,6 +15,12 @@ import components.clients.curseforge.clients.files.CurseForgeFilesClient
 import io.github.heavypunk.compositor.client.{CompositorClient, CommonCompositorClient}
 import io.github.heavypunk.compositor.client.settings.ClientSettings
 import java.net.URI
+import io.github.heavypunk.controller.client.ControllerClient
+import io.github.heavypunk.controller.client.Settings
+import io.github.heavypunk.controller.client.server.CommonControllerServerClient
+import io.github.heavypunk.controller.client.server.ControllerServerClient
+import io.github.heavypunk.controller.client.CommonControllerClient
+import components.clients.controller.ControllerClientFactory
 
 class ClientsModule extends AbstractModule {
   override def configure() = {
@@ -32,5 +38,10 @@ class ClientsModule extends AbstractModule {
     val compositorClientSettings = ClientSettings(new URI("http://localhost:8080"), "compositor")
     val compositorClient = new CommonCompositorClient(compositorClientSettings)
     bind(classOf[CompositorClient]).toInstance(compositorClient)
+
+    //-----------------------------
+    val controllerClientBaseSettings = new Settings("http", "127.0.0.1", 8989)
+    bind(classOf[Settings]).toInstance(controllerClientBaseSettings)
+    
   }
 }

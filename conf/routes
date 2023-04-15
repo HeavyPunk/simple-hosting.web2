@@ -28,3 +28,9 @@ POST /servers/controller/stop-server controllers.GameServerControlController.sto
 POST /external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
 POST /external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
 POST /external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()
+
+POST /account/register controllers.LoginController.register()
+
+POST /account/login controllers.LoginController.login()
+
+POST /account/logout controllers.LoginController.logout()

@@ -16,6 +16,7 @@ class CreateServerResponse (
     @JsonProperty("error") val error: String,
 )
 
+
 class StartServerRequest (
     @JsonProperty("game-server-id") val gameServerId: String,
 )
