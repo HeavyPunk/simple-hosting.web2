@@ -57,7 +57,9 @@ case class GameServer () extends BaseEntity {
     @JoinColumn(name = "owner")
     var owner: User = null
 
-    @Column(name = "host") var host: Host = null
+    @ManyToOne()
+    @JoinColumn(name = "host") var host: Host = null
+
     @Column(name = "name") var name: String = ""
     @Column(name = "ip") var ip: String = ""
     @Column(name = "uuid") var uuid: String = ""
