@@ -41,7 +41,7 @@ class GameServerControlController @Inject() (
             new Settings(
                 controllerClientSettings.scheme,
                 gameServer.get.ip,
-                controllerClientSettings.port
+                gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )
         )
 
@@ -65,11 +65,14 @@ class GameServerControlController @Inject() (
         if (gameServer.isEmpty)
             BadRequest(s"Game server with key ${reqObj.gameServerId} not found")
         
-        val controllerClient = controllerClientFactory.getControllerClient(new Settings(
-            "http",
-            gameServer.get.ip,
-            8989
-        ))
+
+        val controllerClient = controllerClientFactory.getControllerClient(
+            new Settings(
+                controllerClientSettings.scheme,
+                gameServer.get.ip,
+                gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
+            )
+        )
         
         val resp = controllerClient.servers.stopServer(
             new StopServerRequest(reqObj.force),

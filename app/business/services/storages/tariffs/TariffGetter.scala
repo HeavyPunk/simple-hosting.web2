@@ -23,7 +23,7 @@ class StupidTariffProvider(
                 8L * 1024 * 1024 * 1024 * 2,
                 0,
                 Array(
-                    "8989:8989/tcp",
+                    "8989/tcp",
                     "25565/tcp"
                 )
             )
