@@ -32,7 +32,6 @@ class HibernateTests extends munit.FunSuite {
         val user = em.find(classOf[User], 1)
 
         server.ip = "127.0.0.1"
-        server.host = s"$testDescContext host-1"
         server.name = s"$testDescContext test-server"
         server.owner = user
         em.getTransaction().begin()

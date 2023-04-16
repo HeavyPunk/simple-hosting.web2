@@ -42,6 +42,5 @@ class ClientsModule extends AbstractModule {
     //-----------------------------
     val controllerClientBaseSettings = new Settings("http", "127.0.0.1", 8989)
     bind(classOf[Settings]).toInstance(controllerClientBaseSettings)
-    
   }
 }
