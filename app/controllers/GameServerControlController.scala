@@ -15,6 +15,10 @@ import components.clients.controller.ControllerClientFactory
 import business.services.storages.servers.GameServerStorage
 import io.github.heavypunk.controller.client.Settings
 import components.clients.controller.StopGameServerRequest
+import play.api.mvc
+import components.basic.UserTypedKey
+import business.entities.User
+import scala.concurrent.Future
 
 class GameServerControlController @Inject() (
     val controllerComponents: ControllerComponents,
@@ -24,59 +28,88 @@ class GameServerControlController @Inject() (
     val gameServerStorage: GameServerStorage
 ) extends BaseController {
 
+    def findUserForCurrentRequest(request: Request[AnyContent]): Option[User] = {
+        val user = request.attrs.get(UserTypedKey.key)
+        user
+    }
 
-    def startServer() = Action { implicit request: Request[AnyContent] => {
+    def startServer(): mvc.Action[AnyContent] = Action.async { implicit request =>
         if (!request.hasBody)
-            BadRequest
+            Future.successful(BadRequest("Request body is missing"))
+        else {
+            val rawBody = request.body.asJson
+            if (!rawBody.isDefined)
+                Future.successful(BadRequest("Invalid request body"))
+            else {
+                val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartGameServerRequest])
+
+                val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
+                if (gameServer.isEmpty)
+                    Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
+                else {
+                    val user = findUserForCurrentRequest(request)
+                    if (user.isEmpty)
+                        Future.successful(BadRequest("User must be specified"))
+                    else if (!gameServer.get.owner.id.equals(user.get.id))
+                        Future.successful(Forbidden("You don't have permission to manipulate this game server"))
+                    else {
+                        val controllerClient = controllerClientFactory.getControllerClient(
+                            new Settings(
+                                controllerClientSettings.scheme,
+                                gameServer.get.ip,
+                                gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
+                            )
+                        )
+
+                        val startFuture = controllerClient.servers.startServer(
+                            new StartServerRequest(reqObj.saveStdout, reqObj.saveStderr),
+                            Duration.ofMinutes(2)
+                        )
+                        if (startFuture.success) Future.successful(Ok(jsonizer.serialize(startFuture)))
+                        else Future.successful(InternalServerError(jsonizer.serialize(startFuture)))
+                    }
+                }
+            }
+        }
+    }
+
+    def stopServer(): mvc.Action[AnyContent] = Action.async { implicit request =>
+    if (!request.hasBody)
+        Future.successful(BadRequest("Request body is missing"))
+    else {
         val rawBody = request.body.asJson
         if (!rawBody.isDefined)
-            BadRequest
-        
-        val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartGameServerRequest])
-        val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
-        if (gameServer.isEmpty)
-            BadRequest(s"Game server with key ${reqObj.gameServerId} not found")
-        
-        val controllerClient = controllerClientFactory.getControllerClient(
-            new Settings(
-                controllerClientSettings.scheme,
-                gameServer.get.ip,
-                gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
-            )
-        )
+            Future.successful(BadRequest("Invalid request body"))
+        else {
+            val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopGameServerRequest])
 
-        val resp = controllerClient.servers.startServer(
-            new StartServerRequest(reqObj.saveStdout, reqObj.saveStderr),
-            Duration.ofMinutes(2)
-        )
-        Ok(jsonizer.serialize(resp))
-    }}
+            val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
+            if (gameServer.isEmpty)
+                Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
+            else {
+                val user = findUserForCurrentRequest(request)
+                if (user.isEmpty)
+                    Future.successful(BadRequest("User must be specified"))
+                else if (!gameServer.get.owner.id.equals(user.get.id))
+                    Future.successful(Forbidden("You don't have permission to manipulate this game server"))
+                else {
+                    val controllerClient = controllerClientFactory.getControllerClient(
+                        new Settings(
+                            controllerClientSettings.scheme,
+                            gameServer.get.ip,
+                            gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
+                        )
+                    )
 
-    def stopServer() = Action { implicit request: Request[AnyContent] => {
-        if (!request.hasBody)
-            BadRequest
-        val rawBody = request.body.asJson
-        if (!rawBody.isDefined)
-            BadRequest
-
-        val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopGameServerRequest])
-
-        val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
-        if (gameServer.isEmpty)
-            BadRequest(s"Game server with key ${reqObj.gameServerId} not found")
-        
-
-        val controllerClient = controllerClientFactory.getControllerClient(
-            new Settings(
-                controllerClientSettings.scheme,
-                gameServer.get.ip,
-                gameServer.get.ports.find(_.portKind.equalsIgnoreCase("controller")).get.port
-            )
-        )
-        
-        val resp = controllerClient.servers.stopServer(
-            new StopServerRequest(reqObj.force),
-            Duration.ofMinutes(2))
-        Ok(jsonizer.serialize(resp))
-    }}
+                    val stopFuture = controllerClient.servers.stopServer(
+                        new StopServerRequest(reqObj.force),
+                        Duration.ofMinutes(2)
+                    )
+                    if (stopFuture.success) Future.successful(Ok(jsonizer.serialize(stopFuture)))
+                    else Future.successful(InternalServerError(jsonizer.serialize(stopFuture)))
+                }
+            }
+        }
+    }
+  }
 }

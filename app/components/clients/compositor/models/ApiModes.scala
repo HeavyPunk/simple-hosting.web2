@@ -2,7 +2,7 @@ package components.clients.compositor.models
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-class CreateServerRequest (
+case class CreateServerRequest (
     @JsonProperty("name") val vmName: String,
     @JsonProperty("version") val version: String,
     @JsonProperty("tariffId") val tariffId: String,
@@ -10,18 +10,18 @@ class CreateServerRequest (
     @JsonProperty("slots-count") val slotsCount: Int,
 )
 
-class CreateServerResponse (
+case class CreateServerResponse (
     @JsonProperty("game-server-id") val gameServerId: String,
     @JsonProperty("success") val success: Boolean,
     @JsonProperty("error") val error: String,
 )
 
 
-class StartServerRequest (
+case class StartServerRequest (
     @JsonProperty("game-server-id") val gameServerId: String,
 )
 
-class StartServerResponse (
+case class StartServerResponse (
     @JsonProperty("game-server-id") val gameServerId: String,
     @JsonProperty("ip") val vmWhiteIp: String,
     @JsonProperty("ports") val vmWhitePorts: Array[PortDescription],
@@ -29,26 +29,38 @@ class StartServerResponse (
     @JsonProperty("error") val error: String,
 )
 
-class PortDescription (
+case class PortDescription (
     @JsonProperty("port-kind") val portKind: String,
     @JsonProperty("port") val ports: String,
 )
 
-class StopServerRequest (
+case class StopServerRequest (
     @JsonProperty("game-server-id") val gameServerId: String,
 )
-class StopServerResponse (
+case class StopServerResponse (
     @JsonProperty("success") val success: Boolean,
     @JsonProperty("error") val error: String
 )
 
-class RemoveServerRequest (
+case class RemoveServerRequest (
     @JsonProperty("game-server-id") val gameServerId: String,
 )
 
-class RemoveServerResponse (
+case class RemoveServerResponse (
     @JsonProperty("success") val success: Boolean,
     @JsonProperty("error") val error: String
+)
+
+case class GetServersList (
+    @JsonProperty("servers") val servers: Seq[ServerInfo]
+)
+
+case class ServerInfo(
+    @JsonProperty("server-id") val serverId: String,
+    @JsonProperty("server-name") val serverName: String,
+    @JsonProperty("game-kind") val gameKind: String,
+    @JsonProperty("server-ip") val serverIp: String,
+    @JsonProperty("server-port") val serverPort: String,
 )
 
 
