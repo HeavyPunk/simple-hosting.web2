@@ -63,6 +63,10 @@ case class GameServer () extends BaseEntity {
     @Column(name = "name") var name: String = ""
     @Column(name = "ip") var ip: String = ""
     @Column(name = "uuid") var uuid: String = ""
+    @Column(name = "kind") var kind: String = ""
+    @Column(name = "is_public") var isPublic: Boolean = false
+    @Column(name = "is_active_vm") var isActiveVm: Boolean = false
+    @Column(name = "is_active_server") var isActiveServer: Boolean = false
 
     @ManyToOne()
     @JoinColumn(name = "tariff") var tariff: Tariff = null

@@ -21,6 +21,10 @@ POST /servers/compositor/start-server controllers.ServerControlController.startS
 
 POST /servers/compositor/remove-server controllers.ServerControlController.removeServer()
 
+POST /servers/compositor/get-server controllers.ServerControlController.getUserServers()
+
+POST /servers/compositor/update-server controllers.ServerControlController.updateServer()
+
 POST /servers/controller/start-server controllers.GameServerControlController.startServer()
 
 POST /servers/controller/stop-server controllers.GameServerControlController.stopServer()

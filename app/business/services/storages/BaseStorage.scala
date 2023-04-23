@@ -26,12 +26,9 @@ abstract class BaseStorage[T: ClassTag] {
 
     protected def addInternal(item: T): Boolean = {
         try {
-            val hibernateSession = entityManager.unwrap(classOf[Session])
-            val tr = hibernateSession.beginTransaction()
-            hibernateSession.persist(item)
-            hibernateSession.flush()
-            hibernateSession.clear()
-            tr.commit()
+            entityManager.getTransaction().begin()
+            entityManager.persist(item)
+            entityManager.getTransaction().commit()
             true
         } catch {
             case e: RuntimeException => false
@@ -40,12 +37,9 @@ abstract class BaseStorage[T: ClassTag] {
 
     protected def removeInternal(item: T): Boolean = {
         try {
-            val hibernateSession = entityManager.unwrap(classOf[Session])
-            val tr = hibernateSession.beginTransaction()
-            hibernateSession.remove(item)
-            hibernateSession.flush()
-            hibernateSession.clear()
-            tr.commit()
+            entityManager.getTransaction().begin()
+            entityManager.remove(item)
+            entityManager.getTransaction().commit()
             true
         } catch {
             case e: RuntimeException => false
@@ -54,12 +48,9 @@ abstract class BaseStorage[T: ClassTag] {
 
     protected def updateInternal(item: T): Boolean = {
         try {
-            val hibernateSession = entityManager.unwrap(classOf[Session])
-            val tr = hibernateSession.beginTransaction()
-            hibernateSession.update(item)
-            hibernateSession.flush()
-            hibernateSession.clear()
-            tr.commit()
+            entityManager.getTransaction().begin()
+            entityManager.persist(item)
+            entityManager.getTransaction().commit()
             true
         } catch {
             case e: RuntimeException => false

@@ -16,8 +16,8 @@ class SessionStorage @Inject() (
     override val entityManager: EntityManager = em
 
     def FindByToken(token: String): Option[entities.UserSession] = {
-        val res = em.createQuery("from UserSession where token=:login", classOf[entities.UserSession])
-            .setParameter("login", token)
+        val res = em.createQuery("from UserSession where token=:token", classOf[entities.UserSession])
+            .setParameter("token", token)
             .getResultList()
         if (res == null || res.isEmpty) None else Some(res.get(0))
     }

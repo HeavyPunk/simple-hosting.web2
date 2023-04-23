@@ -43,7 +43,7 @@ class GameServerControlController @Inject() (
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartGameServerRequest])
 
-                val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
+                val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
                 if (gameServer.isEmpty)
                     Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
                 else {
@@ -65,8 +65,12 @@ class GameServerControlController @Inject() (
                             new StartServerRequest(reqObj.saveStdout, reqObj.saveStderr),
                             Duration.ofMinutes(2)
                         )
-                        if (startFuture.success) Future.successful(Ok(jsonizer.serialize(startFuture)))
-                        else Future.successful(InternalServerError(jsonizer.serialize(startFuture)))
+                        if (!startFuture.success) Future.successful(InternalServerError(jsonizer.serialize(startFuture)))
+                        else {
+                            gameServer.get.isActiveServer = true
+                            gameServerStorage.update(gameServer.get)
+                            Future.successful(Ok(jsonizer.serialize(startFuture)))
+                        }
                     }
                 }
             }
@@ -83,7 +87,7 @@ class GameServerControlController @Inject() (
         else {
             val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopGameServerRequest])
 
-            val gameServer = gameServerStorage.findByUUID(reqObj.gameServerId)
+            val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
             if (gameServer.isEmpty)
                 Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
             else {
@@ -105,8 +109,12 @@ class GameServerControlController @Inject() (
                         new StopServerRequest(reqObj.force),
                         Duration.ofMinutes(2)
                     )
-                    if (stopFuture.success) Future.successful(Ok(jsonizer.serialize(stopFuture)))
-                    else Future.successful(InternalServerError(jsonizer.serialize(stopFuture)))
+                    if (!stopFuture.success) Future.successful(InternalServerError(jsonizer.serialize(stopFuture)))
+                    else {
+                        gameServer.get.isActiveServer = false
+                        gameServerStorage.update(gameServer.get)
+                        Future.successful(Ok(jsonizer.serialize(stopFuture)))
+                    }
                 }
             }
         }

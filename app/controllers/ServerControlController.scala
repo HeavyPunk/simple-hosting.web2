@@ -32,9 +32,14 @@ import components.clients.controller.ControllerClientFactory
 import io.github.heavypunk.controller.client.Settings
 import business.entities.GameServerPort
 import play.api.mvc
-import components.clients.compositor.models.ServerInfo
-import components.clients.compositor.models.GetServersList
 import scala.concurrent.Future
+import components.clients.compositor.models.{
+    GetServersListRequest,
+    ServerInfo,
+    GetServersList,
+    UpdateServerRequest
+}
+import scala.jdk.CollectionConverters._
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -84,22 +89,50 @@ class ServerControlController @Inject()(
                             ), Duration.ofMinutes(2))
 
                             if (respFuture.vmId.equals(null) || respFuture.vmId.equals(""))
-                                Future.successful(InternalServerError("Couldn't create server"))
-
-                            val databaseTariff = tariffStorage.get(tariff.id)
-                            val server = GameServer()
-                            server.name = reqObj.vmName
-                            server.tariff = databaseTariff
-                            server.owner = user.get
-                            server.uuid = respFuture.vmId
-                            gameServerStorage.add(server)
-                            Future.successful(Ok(jsonizer.serialize(new CreateServerResponse(respFuture.vmId, true, ""))))
+                                Future.successful(InternalServerError("Couldn't create server, please try again"))
+                            else {
+                                val databaseTariff = tariffStorage.get(tariff.id)
+                                val server = GameServer()
+                                server.name = reqObj.vmName
+                                server.tariff = databaseTariff
+                                server.owner = user.get
+                                server.uuid = respFuture.vmId
+                                server.kind = "minecraft"
+                                gameServerStorage.add(server)
+                                Future.successful(Ok(jsonizer.serialize(new CreateServerResponse(respFuture.vmId, true, ""))))
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    def updateServer() = Action.async { implicit request: Request[AnyContent] => {
+        if (!request.hasBody)
+            Future.successful(BadRequest("Request body is missing"))
+        else {
+            val rawBody = request.body.asJson
+            if (!rawBody.isDefined)
+                Future.successful(BadRequest("Invalid request body"))
+            else {
+                val req = jsonizer.deserialize(rawBody.get.toString, classOf[UpdateServerRequest])      
+                val user = findUserForCurrentRequest(request)
+                if (user.isEmpty)
+                    Future.successful(Forbidden("You should specify user"))
+                else {
+                    val server = gameServerStorage.findByHash(req.serverHash)
+                    if (server.isEmpty)
+                        Future.successful(BadRequest("Server not found"))
+                    else {
+                        server.get.isPublic = req.isPublic
+                        if (gameServerStorage.update(server.get)) Future.successful(Ok)
+                        else Future.successful(InternalServerError("Error when saving server specification"))
+                    }
+                }
+            }
+        }
+    }}
 
     def stopServer(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
@@ -110,8 +143,15 @@ class ServerControlController @Inject()(
                 Future.successful(BadRequest("Invalid request body"))
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopServerRequest])
-                val resp = compositorClient.stopServer(new io.github.heavypunk.compositor.client.models.StopServerRequest(reqObj.gameServerId), Duration.ofMinutes(2))
-                Future.successful(Ok(jsonizer.serialize(new StopServerResponse(resp.success, ""))))
+                val resp = compositorClient.stopServer(new io.github.heavypunk.compositor.client.models.StopServerRequest(reqObj.gameServerHash), Duration.ofMinutes(2))
+                val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
+                if (gameServer.isEmpty)
+                    Future.successful(NotFound(s"Game server ${reqObj.gameServerHash} not found"))
+                else {
+                    gameServer.get.isActiveVm = false
+                    gameServerStorage.update(gameServer.get)
+                    Future.successful(Ok(jsonizer.serialize(new StopServerResponse(resp.success, ""))))
+                }
             }
         }
     }}
@@ -125,9 +165,9 @@ class ServerControlController @Inject()(
                 Future.successful(BadRequest("Invalid request body"))
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartServerRequest])
-                val resp = compositorClient.startServer(new io.github.heavypunk.compositor.client.models.StartServerRequest(reqObj.gameServerId), Duration.ofMinutes(2))
+                val resp = compositorClient.startServer(new io.github.heavypunk.compositor.client.models.StartServerRequest(reqObj.gameServerHash), Duration.ofMinutes(2))
 
-                val gameServer = gameServerStorage.findByUUID(resp.vmId)
+                val gameServer = gameServerStorage.findByHash(resp.vmId)
                 if (gameServer.isEmpty)
                     Future.successful(InternalServerError(s"Game server not found: ${resp.vmId}"))
                 else {
@@ -149,6 +189,7 @@ class ServerControlController @Inject()(
 
                     gameServer.get.ip = resp.vmWhiteIp
                     gameServer.get.ports = ports
+                    gameServer.get.isActiveVm = true
                     gameServerStorage.update(gameServer.get)
 
                     Future.successful(Ok(jsonizer.serialize(new StartServerResponse(
@@ -174,24 +215,65 @@ class ServerControlController @Inject()(
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[RemoveServerRequest])
                 val resp = compositorClient.removeServer(new io.github.heavypunk.compositor.client.models.RemoveServerRequest(
-                    reqObj.gameServerId
+                    reqObj.gameServerHash
                 ), Duration.ofMinutes(2))
-                Future.successful(Ok(jsonizer.serialize(new RemoveServerResponse(resp.success, resp.error))))
+                val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
+                if (gameServer.isEmpty)
+                    Future.successful(NotFound(s"Server ${reqObj.gameServerHash} not found"))
+                else {
+                    gameServerStorage.remove(gameServer.get)
+                    Future.successful(Ok(jsonizer.serialize(new RemoveServerResponse(resp.success, resp.error))))
+                }
             }
         }
     }}
 
-    def getServers(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
+    def getCompositorServers(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         val resp = compositorClient.getServerList();
         if (!resp.success)
             Future.successful(InternalServerError(s"Hipervisor rised the error ${resp.error}"))
         else {
             val servers = GetServersList(resp.vmList map {vm => 
-                val server = gameServerStorage.findByUUID(vm.id)
-                val (ip, port) = if (server.isDefined) (server.get.ip, server.get.ports.find(_.portKind.equals("none")).get.port.toString) else ("", "")
-                ServerInfo(vm.id, vm.names(0), "minecraft", ip, port.toString())})
+                val server = gameServerStorage.findByHash(vm.id)
+                val (ip, ports) = if (server.isDefined) (server.get.ip, server.get.ports) else ("", Array.empty[GameServerPort])
+                ServerInfo(vm.id, vm.names(0), "none", ip, ports)}
+            )
             val res = jsonizer.serialize(servers)
             Future.successful(Ok(res))
+        }
+    }}
+
+    def getUserServers(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
+        if (!request.hasBody || request.body.asJson.isEmpty)
+            Future.successful(BadRequest)
+        else {
+            val req = jsonizer.deserialize(request.body.asJson.get.toString, classOf[GetServersListRequest])
+            if (req.isPublic){
+                val publicServers = gameServerStorage.findPublicServers(req.kind) // TODO: pagination
+                if (publicServers.isEmpty) Future.successful(NotFound)
+                else {
+                    val servers = publicServers.get.asScala.toList
+                    Future.successful(Ok(jsonizer.serialize(
+                        GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports)}
+                    ))))
+                }
+            }
+            else {
+                val user = findUserForCurrentRequest(request)
+                if (user.isEmpty)
+                    Future.successful(Forbidden(s"You should specify a user"))
+                else {
+                    val userServers = gameServerStorage.findServersByOwner(user.get)
+                    if (userServers.isEmpty)
+                        Future.successful(NotFound)
+                    else{
+                        val servers = userServers.get.asScala.toList
+                        Future.successful(Ok(jsonizer.serialize(
+                            GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports)}
+                        ))))
+                    }
+                }
+            }
         }
     }}
 }
