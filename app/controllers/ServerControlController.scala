@@ -257,8 +257,7 @@ class ServerControlController @Inject()(
                         GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports)}
                     ))))
                 }
-            }
-            else {
+            } else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
                     Future.successful(Forbidden(s"You should specify a user"))

@@ -20,7 +20,7 @@ class GameServerStorage(
     }
 
     def findPublicServers(kind: String): Option[ju.List[GameServer]] = {
-        val res = em.createQuery("from GameServer where kind=:kind", classOf[GameServer])
+        val res = em.createQuery("from GameServer where kind=:kind and isPublic=true", classOf[GameServer])
             .setParameter("kind", kind)
             .getResultList()
         if (res == null || res.isEmpty) None else Some(res)

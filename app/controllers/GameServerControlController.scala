@@ -53,6 +53,7 @@ class GameServerControlController @Inject() (
                     else if (!gameServer.get.owner.id.equals(user.get.id))
                         Future.successful(Forbidden("You don't have permission to manipulate this game server"))
                     else {
+                        Thread.sleep(1000) //TODO: Remove ugly hack
                         val controllerClient = controllerClientFactory.getControllerClient(
                             new Settings(
                                 controllerClientSettings.scheme,
