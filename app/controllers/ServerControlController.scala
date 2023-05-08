@@ -34,7 +34,7 @@ import business.entities.GameServerPort
 import play.api.mvc
 import scala.concurrent.Future
 import components.clients.compositor.models.{
-    GetServersListRequest,
+    GetUserServersRequest,
     ServerInfo,
     GetServersList,
     UpdateServerRequest
@@ -236,7 +236,7 @@ class ServerControlController @Inject()(
             val servers = GetServersList(resp.vmList map {vm => 
                 val server = gameServerStorage.findByHash(vm.id)
                 val (ip, ports) = if (server.isDefined) (server.get.ip, server.get.ports) else ("", Array.empty[GameServerPort])
-                ServerInfo(vm.id, vm.names(0), "none", ip, ports)}
+                ServerInfo(vm.id, vm.names(0), "none", ip, ports, vm.state.equalsIgnoreCase("running"))}
             )
             val res = jsonizer.serialize(servers)
             Future.successful(Ok(res))
@@ -247,14 +247,14 @@ class ServerControlController @Inject()(
         if (!request.hasBody || request.body.asJson.isEmpty)
             Future.successful(BadRequest)
         else {
-            val req = jsonizer.deserialize(request.body.asJson.get.toString, classOf[GetServersListRequest])
+            val req = jsonizer.deserialize(request.body.asJson.get.toString, classOf[GetUserServersRequest])
             if (req.isPublic){
                 val publicServers = gameServerStorage.findPublicServers(req.kind) // TODO: pagination
                 if (publicServers.isEmpty) Future.successful(NotFound)
                 else {
                     val servers = publicServers.get.asScala.toList
                     Future.successful(Ok(jsonizer.serialize(
-                        GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports)}
+                        GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports, s.isActiveServer)}
                     ))))
                 }
             } else {
@@ -268,9 +268,44 @@ class ServerControlController @Inject()(
                     else{
                         val servers = userServers.get.asScala.toList
                         Future.successful(Ok(jsonizer.serialize(
-                            GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports)}
+                            GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports, s.isActiveServer)}
                         ))))
                     }
+                }
+            }
+        }
+    }}
+
+    def getUserServerByHash(serverHash: String) = Action.async {implicit request: Request[AnyContent] => {
+        val server = gameServerStorage.findByHash(serverHash)
+        if (server.isEmpty)
+            Future.successful(NotFound(s"Server ${serverHash} not found"))
+        else {
+            if (server.get.isPublic)
+                Future.successful(Ok(jsonizer.serialize(ServerInfo(
+                    server.get.uuid,
+                    server.get.name,
+                    server.get.kind,
+                    server.get.ip,
+                    server.get.ports,
+                    server.get.isActiveServer
+                ))))
+            else {
+                val user = findUserForCurrentRequest(request)
+                if (user.isEmpty)
+                    Future.successful(Forbidden(s"You should specify a user"))
+                else {
+                    if (server.get.owner.id != user.get.id)
+                        Future.successful(Forbidden(s"You don't have access to this server"))
+                    else
+                        Future.successful(Ok(jsonizer.serialize(ServerInfo(
+                            server.get.uuid,
+                            server.get.name,
+                            server.get.kind,
+                            server.get.ip,
+                            server.get.ports,
+                            server.get.isActiveServer
+                        ))))
                 }
             }
         }

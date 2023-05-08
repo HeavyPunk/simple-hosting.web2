@@ -1,6 +1,7 @@
 package components.services.business
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import business.entities.User
 
 case class RegisterUserRequest (
     val login: String,
@@ -13,12 +14,27 @@ case class LoginUserRequest (
     val password: String
 )
 
+case class UserModel (
+    val id: Long,
+    val email: String,
+    val userName: String,
+    val isAdmin: Boolean,
+    val avatarUrl: String,
+)
+
 case class LoginUserResponse (
-    @JsonProperty("auth-token") val authToken: String,
+    val authToken: String,
+    val user: UserModel 
 )
 
 case class LogoutUserRequest (
-    @JsonProperty("auth-token") val authToken: String
+    val authToken: String
+)
+
+case class GetCurrentUserResponse (
+    val email: String,
+    val login: String,
+    val avatarUrl: String
 )
 
 

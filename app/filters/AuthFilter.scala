@@ -31,7 +31,7 @@ class AuthFilter @Inject()(
         val session = sessionStorage.FindByToken(token.get)
         if (session.isEmpty)
             return nextFilter(rh)
-        val user = usersStorage.FindBySession(session.get)
+        val user = usersStorage.findBySession(session.get)
         if (user.isEmpty)
             return nextFilter(rh)
         

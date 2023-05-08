@@ -62,9 +62,10 @@ case class ServerInfo(
     val gameKind: String,
     val serverIp: String,
     val serverPorts: Array[GameServerPort],
+    val isOnline: Boolean
 )
 
-case class GetServersListRequest (
+case class GetUserServersRequest (
     val kind: String,
     val isPublic: Boolean
 )

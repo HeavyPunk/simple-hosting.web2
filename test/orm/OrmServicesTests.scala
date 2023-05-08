@@ -13,12 +13,12 @@ class OrmServicesTests extends munit.FunSuite {
     val sessionStorage = new SessionStorage(em)
 
     test("UserRepository test") {
-        val user = userStorage.FindByLogin("user")
+        val user = userStorage.findByLogin("user")
         assert(user != null && user.isDefined)
     }
 
     test("Session storage test") {
-        val user = userStorage.FindByLogin("user")
+        val user = userStorage.findByLogin("user")
         val session = new UserSession()
         val isSuccess = sessionStorage.add(session)
         assert(isSuccess)

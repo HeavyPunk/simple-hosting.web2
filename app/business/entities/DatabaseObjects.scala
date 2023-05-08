@@ -48,6 +48,8 @@ case class User () extends BaseEntity {
     @Column(name = "passwd") var passwdHash: String = ""
     @OneToOne(cascade = Array(CascadeType.ALL))
     @JoinColumn(name = "session") var session: UserSession = null
+    @Column(name = "is_admin") var isAdmin: Boolean = false
+    @Column(name = "avatar_url") var avatarUrl: String = ""
 }
 
 @Entity
@@ -64,6 +66,7 @@ case class GameServer () extends BaseEntity {
     @Column(name = "ip") var ip: String = ""
     @Column(name = "uuid") var uuid: String = ""
     @Column(name = "kind") var kind: String = ""
+    @Column(name = "version") var version: String = ""
     @Column(name = "is_public") var isPublic: Boolean = false
     @Column(name = "is_active_vm") var isActiveVm: Boolean = false
     @Column(name = "is_active_server") var isActiveServer: Boolean = false

@@ -6,16 +6,17 @@ import play.api.mvc.{ ControllerComponents, Action, Request, AnyContent }
 import com.google.inject.Inject
 import business.services.storages.users.UserStorage
 import business.services.storages.session.SessionStorage
-import components.services.business.{ RegisterUserRequest, LogoutUserRequest }
+import components.services.business.{ RegisterUserRequest, LogoutUserRequest, GetCurrentUserResponse }
 import business.entities.User
 import components.services.hasher.PasswordHasher
 import components.services.business.LoginUserRequest
 import play.api.mvc.Cookie
 import business.entities.UserSession
 import java.util.UUID
-import components.services.business.LoginUserResponse
+import components.services.business.{ LoginUserResponse, UserModel }
 import play.filters.csrf.CSRF
 import scala.concurrent.Future
+import components.basic.UserTypedKey
 
 class LoginController @Inject() (
     val controllerComponents: ControllerComponents,
@@ -23,19 +24,53 @@ class LoginController @Inject() (
     val sessionStorage: SessionStorage,
     val jsonizer: JsonService
 ) extends BaseController {
-    def register() = Action { implicit request: Request[AnyContent] => {
+
+    def findUserForCurrentRequest(request: Request[AnyContent]): Option[User] = {
+        val user = request.attrs.get(UserTypedKey.key)
+        user
+    }
+
+    def register() = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
-            BadRequest
-        val rawBodyJson = request.body.asJson
-        if (rawBodyJson.isEmpty)
-            BadRequest
-        val req = jsonizer.deserialize(rawBodyJson.get.toString, classOf[RegisterUserRequest])
-        val user = User()
-        user.email = req.email // TODO: replace this ugly hack
-        user.login = req.login
-        user.passwdHash = PasswordHasher.hash(req.password)
-        val res = userStorage.add(user)
-        if (res) Created else InternalServerError
+            Future.successful(BadRequest(s"You should specify a user's password and login"))
+        else {
+            val rawBodyJson = request.body.asJson
+            if (rawBodyJson.isEmpty)
+                Future.successful(BadRequest(s"Request body must be a json"))
+            else {
+                val req = jsonizer.deserialize(rawBodyJson.get.toString, classOf[RegisterUserRequest])
+                val loginIsExist = userStorage.findByLogin(req.login)
+                val emailIsExist = userStorage.findByEmail(req.email)
+                if (loginIsExist.isDefined || emailIsExist.isDefined)
+                    Future.successful(BadRequest(s"User with this login or email already exists"))
+                else {
+                    val user = User()
+                    user.email = req.email // TODO: replace this ugly hack
+                    user.login = req.login
+                    user.passwdHash = PasswordHasher.hash(req.password)
+                    val userCreated = userStorage.add(user)
+                    if (!userCreated)
+                        Future.successful(InternalServerError)
+                    else {
+                        val newSession = new UserSession()
+                        newSession.token = UUID.randomUUID().toString
+                        sessionStorage.add(newSession)
+                        user.session = newSession
+                        userStorage.update(user)
+                        Future.successful(Created(jsonizer.serialize(LoginUserResponse(
+                            newSession.token,
+                            UserModel(
+                                0,
+                                user.email,
+                                user.login,
+                                user.isAdmin,
+                                user.avatarUrl,
+                            )
+                        ))))
+                    }
+                }
+            }
+        }
     }}
 
     def login() = Action.async { implicit request: Request[AnyContent] => {
@@ -48,7 +83,7 @@ class LoginController @Inject() (
             else {
                 val req = jsonizer.deserialize(rawBodyJson.get.toString, classOf[LoginUserRequest])
                 val passHash = PasswordHasher.hash(req.password)
-                val user = userStorage.FindByLogin(req.login)
+                val user = userStorage.findByLogin(req.login)
                 if (!user.isDefined)
                     Future.successful(Unauthorized)
                 else {
@@ -69,7 +104,16 @@ class LoginController @Inject() (
                         user.get.session = newSession
                         userStorage.update(user.get)
 
-                        val resp = jsonizer.serialize(LoginUserResponse(newSession.token))
+                        val resp = jsonizer.serialize(LoginUserResponse(
+                            newSession.token,
+                            UserModel(
+                                user.get.id,
+                                user.get.email,
+                                user.get.login,
+                                user.get.isAdmin,
+                                user.get.avatarUrl,
+                            )
+                        ))
                         Future.successful(Ok(resp))
                     }
                 }
@@ -90,7 +134,7 @@ class LoginController @Inject() (
                 if (session.isEmpty)
                     Ok
                 else {
-                    val user = userStorage.FindBySession(session.get)
+                    val user = userStorage.findBySession(session.get)
                     if (user.isEmpty) {
                         sessionStorage.remove(session.get)
                         Ok
@@ -103,6 +147,17 @@ class LoginController @Inject() (
                     }
                 }
             }
+        }
+    }}
+
+    def me() = Action.async { implicit request: Request[AnyContent] => {
+        val user = findUserForCurrentRequest(request)
+        if (user.isEmpty)
+            Future.successful(NotFound(s"Cannot get user from request. Maybe you forgot put it to an auth header"))
+        else {
+            Future.successful(Ok(
+                jsonizer.serialize(GetCurrentUserResponse(user.get.email, user.get.login, ""))
+            ))
         }
     }}
 }
