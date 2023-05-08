@@ -12,3 +12,8 @@ class StopGameServerRequest (
     val gameServerId: String,
     val force: Boolean
 )
+
+case class MessageResponse (
+    val message: String,
+    val success: Boolean
+)

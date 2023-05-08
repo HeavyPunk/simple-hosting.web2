@@ -37,5 +37,3 @@ case class GetCurrentUserResponse (
     val avatarUrl: String
 )
 
-
-

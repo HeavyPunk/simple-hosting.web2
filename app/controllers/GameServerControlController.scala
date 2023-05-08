@@ -19,6 +19,7 @@ import play.api.mvc
 import components.basic.UserTypedKey
 import business.entities.User
 import scala.concurrent.Future
+import components.clients.controller.MessageResponse
 
 class GameServerControlController @Inject() (
     val controllerComponents: ControllerComponents,
@@ -33,6 +34,8 @@ class GameServerControlController @Inject() (
         user
     }
 
+    def serializeError(error: String, success: Boolean = false) = jsonizer.serialize(MessageResponse(error, success))
+
     def startServer(): mvc.Action[AnyContent] = Action.async { implicit request =>
         if (!request.hasBody)
             Future.successful(BadRequest("Request body is missing"))
@@ -45,13 +48,13 @@ class GameServerControlController @Inject() (
 
                 val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
                 if (gameServer.isEmpty)
-                    Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
+                    Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerId} не найден")))
                 else {
                     val user = findUserForCurrentRequest(request)
                     if (user.isEmpty)
-                        Future.successful(BadRequest("User must be specified"))
+                        Future.successful(BadRequest(serializeError("Пользователь должен быть указан")))
                     else if (!gameServer.get.owner.id.equals(user.get.id))
-                        Future.successful(Forbidden("You don't have permission to manipulate this game server"))
+                        Future.successful(Forbidden(serializeError("У вас нет прав управления этим сервером")))
                     else {
                         Thread.sleep(1000) //TODO: Remove ugly hack
                         val controllerClient = controllerClientFactory.getControllerClient(
@@ -80,23 +83,23 @@ class GameServerControlController @Inject() (
 
     def stopServer(): mvc.Action[AnyContent] = Action.async { implicit request =>
     if (!request.hasBody)
-        Future.successful(BadRequest("Request body is missing"))
+        Future.successful(BadRequest(serializeError("Request body is missing")))
     else {
         val rawBody = request.body.asJson
         if (!rawBody.isDefined)
-            Future.successful(BadRequest("Invalid request body"))
+            Future.successful(BadRequest(serializeError("Invalid request body")))
         else {
             val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopGameServerRequest])
 
             val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
             if (gameServer.isEmpty)
-                Future.successful(BadRequest(s"Game server with key ${reqObj.gameServerId} not found"))
+                Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerId} не найден")))
             else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
-                    Future.successful(BadRequest("User must be specified"))
+                    Future.successful(BadRequest(serializeError("Пользователь должен быть указан")))
                 else if (!gameServer.get.owner.id.equals(user.get.id))
-                    Future.successful(Forbidden("You don't have permission to manipulate this game server"))
+                    Future.successful(Forbidden(serializeError("У вас нет прав управления этим сервером")))
                 else {
                     val controllerClient = controllerClientFactory.getControllerClient(
                         new Settings(

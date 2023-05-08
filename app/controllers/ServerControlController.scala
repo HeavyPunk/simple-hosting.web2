@@ -40,6 +40,8 @@ import components.clients.compositor.models.{
     UpdateServerRequest
 }
 import scala.jdk.CollectionConverters._
+import java.util.UUID
+import components.clients.compositor.models.MessageResponse
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -57,31 +59,34 @@ class ServerControlController @Inject()(
         user
     }
 
+    def serializeError(error: String, success: Boolean = false) = jsonizer.serialize(MessageResponse(error, success))
+
     def createServer(): mvc.Action[AnyContent] = Action.async { implicit request =>
         if (!request.hasBody)
-            Future.successful(BadRequest("Request body is missing"))
+            Future.successful(BadRequest(serializeError("Request body is missing")))
         else {
             val rawBody = request.body.asJson
             if (!rawBody.isDefined)
-                Future.successful(BadRequest("Invalid request body"))
+                Future.successful(BadRequest(serializeError("Invalid request body")))
             else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
-                    Future.successful(BadRequest("User not found"))
+                    Future.successful(BadRequest(serializeError("Пользователь не найден")))
                 else {
                     val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[CreateServerRequest])
                     val tariffId = reqObj.tariffId.toLongOption
                     if (tariffId.isEmpty)
-                        Future.successful(BadRequest("Tariff id has invalid format"))
+                        Future.successful(BadRequest(serializeError("Номер тарифа имеет неверный формат")))
                     else {
                         val tariffOption = tariffsGetter.findTariffById(tariffId.get)
                         if (tariffOption.isEmpty)
-                            Future.successful(BadRequest(s"Tariff with id ${tariffId.get} not found"))
+                            Future.successful(BadRequest(serializeError(s"Тариф с номером ${tariffId.get} не найден")))
                         else {
                             val tariff = tariffOption.get
+                            val serverSlug = UUID.randomUUID()
                             val respFuture = compositorClient.createServer(new io.github.heavypunk.compositor.client.models.CreateServerRequest(
                                 tariff.hadrware.imageUri,
-                                reqObj.vmName,
+                                serverSlug.toString,
                                 tariff.hadrware.availableRamBytes,
                                 tariff.hadrware.availableDiskBytes,
                                 tariff.hadrware.availableSwapBytes,
@@ -89,11 +94,12 @@ class ServerControlController @Inject()(
                             ), Duration.ofMinutes(2))
 
                             if (respFuture.vmId.equals(null) || respFuture.vmId.equals(""))
-                                Future.successful(InternalServerError("Couldn't create server, please try again"))
+                                Future.successful(InternalServerError(serializeError("Не получилось создать сервер, пожалуйста, попробуйте позже")))
                             else {
                                 val databaseTariff = tariffStorage.get(tariff.id)
                                 val server = GameServer()
                                 server.name = reqObj.vmName
+                                server.slug = serverSlug.toString
                                 server.tariff = databaseTariff
                                 server.owner = user.get
                                 server.uuid = respFuture.vmId
@@ -110,24 +116,24 @@ class ServerControlController @Inject()(
 
     def updateServer() = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
-            Future.successful(BadRequest("Request body is missing"))
+            Future.successful(BadRequest(serializeError("Request body is missing")))
         else {
             val rawBody = request.body.asJson
             if (!rawBody.isDefined)
-                Future.successful(BadRequest("Invalid request body"))
+                Future.successful(BadRequest(serializeError("Invalid request body")))
             else {
                 val req = jsonizer.deserialize(rawBody.get.toString, classOf[UpdateServerRequest])      
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
-                    Future.successful(Forbidden("You should specify user"))
+                    Future.successful(Forbidden(serializeError("You should specify user")))
                 else {
                     val server = gameServerStorage.findByHash(req.serverHash)
                     if (server.isEmpty)
-                        Future.successful(BadRequest("Server not found"))
+                        Future.successful(BadRequest(serializeError("Сервер не найден")))
                     else {
                         server.get.isPublic = req.isPublic
                         if (gameServerStorage.update(server.get)) Future.successful(Ok)
-                        else Future.successful(InternalServerError("Error when saving server specification"))
+                        else Future.successful(InternalServerError(serializeError("Произошла ошибка при сохранении сервера")))
                     }
                 }
             }
@@ -136,17 +142,17 @@ class ServerControlController @Inject()(
 
     def stopServer(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
-            Future.successful(BadRequest("Request body is missing"))
+            Future.successful(BadRequest(serializeError("Request body is missing")))
         else {
             val rawBody = request.body.asJson
             if (!rawBody.isDefined)
-                Future.successful(BadRequest("Invalid request body"))
+                Future.successful(BadRequest(serializeError("Invalid request body")))
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopServerRequest])
                 val resp = compositorClient.stopServer(new io.github.heavypunk.compositor.client.models.StopServerRequest(reqObj.gameServerHash), Duration.ofMinutes(2))
                 val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
                 if (gameServer.isEmpty)
-                    Future.successful(NotFound(s"Game server ${reqObj.gameServerHash} not found"))
+                    Future.successful(NotFound(serializeError(s"Сервер ${reqObj.gameServerHash} не найден")))
                 else {
                     gameServer.get.isActiveVm = false
                     gameServerStorage.update(gameServer.get)
@@ -158,19 +164,20 @@ class ServerControlController @Inject()(
 
     def startServer(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
-            Future.successful(BadRequest("Request body is missing"))
+            Future.successful(BadRequest(serializeError("Request body is missing")))
         else {
             val rawBody = request.body.asJson
             if (!rawBody.isDefined)
-                Future.successful(BadRequest("Invalid request body"))
+                Future.successful(BadRequest(serializeError("Invalid request body")))
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartServerRequest])
                 val resp = compositorClient.startServer(new io.github.heavypunk.compositor.client.models.StartServerRequest(reqObj.gameServerHash), Duration.ofMinutes(2))
 
                 val gameServer = gameServerStorage.findByHash(resp.vmId)
                 if (gameServer.isEmpty)
-                    Future.successful(InternalServerError(s"Game server not found: ${resp.vmId}"))
+                    Future.successful(InternalServerError(serializeError(s"Сервер не найден: ${resp.vmId}")))
                 else {
+                    Thread.sleep(2000)
                     val controllerPortOption = ControllerUtils.findControllerPort(
                         resp.vmWhitePorts,
                         controllerClientFactory,
@@ -206,12 +213,12 @@ class ServerControlController @Inject()(
 
     def removeServer(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         if (!request.hasBody)
-            Future.successful(BadRequest("Request body is missing"))
+            Future.successful(BadRequest(serializeError("Request body is missing")))
         else {
             val rawBody = request.body.asJson
 
             if (!rawBody.isDefined)
-                Future.successful(BadRequest("Invalid request body"))
+                Future.successful(BadRequest(serializeError("Invalid request body")))
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[RemoveServerRequest])
                 val resp = compositorClient.removeServer(new io.github.heavypunk.compositor.client.models.RemoveServerRequest(
@@ -219,7 +226,7 @@ class ServerControlController @Inject()(
                 ), Duration.ofMinutes(2))
                 val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
                 if (gameServer.isEmpty)
-                    Future.successful(NotFound(s"Server ${reqObj.gameServerHash} not found"))
+                    Future.successful(NotFound(serializeError(s"Сервер ${reqObj.gameServerHash} не найден")))
                 else {
                     gameServerStorage.remove(gameServer.get)
                     Future.successful(Ok(jsonizer.serialize(new RemoveServerResponse(resp.success, resp.error))))
@@ -231,7 +238,7 @@ class ServerControlController @Inject()(
     def getCompositorServers(): mvc.Action[AnyContent] = Action.async { implicit request: Request[AnyContent] => {
         val resp = compositorClient.getServerList();
         if (!resp.success)
-            Future.successful(InternalServerError(s"Hipervisor rised the error ${resp.error}"))
+            Future.successful(InternalServerError(serializeError(s"Hypervisor raised the error ${resp.error}")))
         else {
             val servers = GetServersList(resp.vmList map {vm => 
                 val server = gameServerStorage.findByHash(vm.id)
@@ -250,7 +257,7 @@ class ServerControlController @Inject()(
             val req = jsonizer.deserialize(request.body.asJson.get.toString, classOf[GetUserServersRequest])
             if (req.isPublic){
                 val publicServers = gameServerStorage.findPublicServers(req.kind) // TODO: pagination
-                if (publicServers.isEmpty) Future.successful(NotFound)
+                if (publicServers.isEmpty) Future.successful(NotFound(jsonizer.serialize(GetServersList(Seq.empty))))
                 else {
                     val servers = publicServers.get.asScala.toList
                     Future.successful(Ok(jsonizer.serialize(
@@ -260,11 +267,11 @@ class ServerControlController @Inject()(
             } else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
-                    Future.successful(Forbidden(s"You should specify a user"))
+                    Future.successful(Forbidden(serializeError(s"Пользователь не указан")))
                 else {
                     val userServers = gameServerStorage.findServersByOwner(user.get)
                     if (userServers.isEmpty)
-                        Future.successful(NotFound)
+                        Future.successful(NotFound(jsonizer.serialize(GetServersList(Seq.empty))))
                     else{
                         val servers = userServers.get.asScala.toList
                         Future.successful(Ok(jsonizer.serialize(
@@ -279,7 +286,7 @@ class ServerControlController @Inject()(
     def getUserServerByHash(serverHash: String) = Action.async {implicit request: Request[AnyContent] => {
         val server = gameServerStorage.findByHash(serverHash)
         if (server.isEmpty)
-            Future.successful(NotFound(s"Server ${serverHash} not found"))
+            Future.successful(NotFound(serializeError(s"Сервер ${serverHash} не найден")))
         else {
             if (server.get.isPublic)
                 Future.successful(Ok(jsonizer.serialize(ServerInfo(
@@ -293,10 +300,10 @@ class ServerControlController @Inject()(
             else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)
-                    Future.successful(Forbidden(s"You should specify a user"))
+                    Future.successful(Forbidden(serializeError(s"Пользователь не указан")))
                 else {
                     if (server.get.owner.id != user.get.id)
-                        Future.successful(Forbidden(s"You don't have access to this server"))
+                        Future.successful(Forbidden(serializeError(s"У вас нет доступа к этому серверу")))
                     else
                         Future.successful(Ok(jsonizer.serialize(ServerInfo(
                             server.get.uuid,

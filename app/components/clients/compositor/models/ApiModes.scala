@@ -75,4 +75,8 @@ case class UpdateServerRequest (
     val isPublic: Boolean
 )
 
+case class MessageResponse (
+    val message: String,
+    val success: Boolean
+)
 
