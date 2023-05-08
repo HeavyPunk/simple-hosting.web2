@@ -46,9 +46,9 @@ class GameServerControlController @Inject() (
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StartGameServerRequest])
 
-                val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
+                val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
                 if (gameServer.isEmpty)
-                    Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerId} не найден")))
+                    Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerHash} не найден")))
                 else {
                     val user = findUserForCurrentRequest(request)
                     if (user.isEmpty)
@@ -91,9 +91,9 @@ class GameServerControlController @Inject() (
         else {
             val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[StopGameServerRequest])
 
-            val gameServer = gameServerStorage.findByHash(reqObj.gameServerId)
+            val gameServer = gameServerStorage.findByHash(reqObj.gameServerHash)
             if (gameServer.isEmpty)
-                Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerId} не найден")))
+                Future.successful(BadRequest(serializeError(s"Сервер ${reqObj.gameServerHash} не найден")))
             else {
                 val user = findUserForCurrentRequest(request)
                 if (user.isEmpty)

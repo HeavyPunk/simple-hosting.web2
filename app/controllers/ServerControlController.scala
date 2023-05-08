@@ -127,7 +127,7 @@ class ServerControlController @Inject()(
                 if (user.isEmpty)
                     Future.successful(Forbidden(serializeError("You should specify user")))
                 else {
-                    val server = gameServerStorage.findByHash(req.serverHash)
+                    val server = gameServerStorage.findByHash(req.gameServerHash)
                     if (server.isEmpty)
                         Future.successful(BadRequest(serializeError("Сервер не найден")))
                     else {
@@ -202,7 +202,7 @@ class ServerControlController @Inject()(
                     Future.successful(Ok(jsonizer.serialize(new StartServerResponse(
                         resp.vmId,
                         resp.vmWhiteIp,
-                        ports map (p => new PortDescription(p.portKind, p.port.toString)),
+                        ports map (p => new PortDescription(s"${p.portKind}-${p.port}", p.portKind, p.port.toString)),
                         true,
                         ""
                     ))))

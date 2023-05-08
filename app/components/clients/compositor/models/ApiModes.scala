@@ -24,15 +24,16 @@ case class StartServerRequest (
 
 case class StartServerResponse (
     val gameServerHash: String,
-    @JsonProperty("ip") val vmWhiteIp: String,
-    @JsonProperty("ports") val vmWhitePorts: Array[PortDescription],
+    @JsonProperty("serverIp") val vmWhiteIp: String,
+    @JsonProperty("serverPorts") val vmWhitePorts: Array[PortDescription],
     val success: Boolean,
     val error: String,
 )
 
 case class PortDescription (
+    val id: String,
     val portKind: String,
-    val ports: String,
+    val port: String,
 )
 
 case class StopServerRequest (
@@ -71,7 +72,7 @@ case class GetUserServersRequest (
 )
 
 case class UpdateServerRequest (
-    val serverHash: String,
+    val gameServerHash: String,
     val isPublic: Boolean
 )
 
