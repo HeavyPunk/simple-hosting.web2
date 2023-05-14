@@ -5,6 +5,7 @@ import business.entities.User
 import java.util.Date
 import java.time.Instant
 import business.entities.GameServer
+import business.entities.UserSession
 
 class HibernateTests extends munit.FunSuite {
     val testDescContext = "[Hibernate]"
@@ -18,7 +19,7 @@ class HibernateTests extends munit.FunSuite {
         user.login = "user"
         user.email = "user@simplehosting.com"
         user.passwdHash = "password"
-        user.creationDate = Date.from(Instant.now())
+        user.session = new UserSession()
         em.getTransaction().begin()
         em.persist(user)
         em.getTransaction().commit()
@@ -28,12 +29,11 @@ class HibernateTests extends munit.FunSuite {
         assert(em.isOpen())
 
         val server = new GameServer()
-        server.creationDate = Date.from(Instant.now())
+        val user = em.find(classOf[User], 1)
+
         server.ip = "127.0.0.1"
-        server.host = s"$testDescContext host-1"
         server.name = s"$testDescContext test-server"
-        server.owner = 3
-        server.ports = Array(0, 1)
+        server.owner = user
         em.getTransaction().begin()
         em.persist(server)
         em.getTransaction().commit()

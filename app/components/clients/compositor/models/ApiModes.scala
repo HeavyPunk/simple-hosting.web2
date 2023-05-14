@@ -1,53 +1,83 @@
 package components.clients.compositor.models
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import business.entities.GameServerPort
 
-class CreateServerRequest (
+case class CreateServerRequest (
     @JsonProperty("name") val vmName: String,
-    @JsonProperty("version") val version: String,
-    @JsonProperty("tariffId") val tariffId: String,
-    @JsonProperty("rent-time") val rentTime: String,
-    @JsonProperty("slots-count") val slotsCount: Int,
+    val version: String,
+    val tariffId: String,
+    val rentTime: String,
+    val slotsCount: Int,
 )
 
-class CreateServerResponse (
-    @JsonProperty("game-server-id") val gameServerId: String,
-    @JsonProperty("success") val success: Boolean,
-    @JsonProperty("error") val error: String,
+case class CreateServerResponse (
+    val gameServerHash: String,
+    val success: Boolean,
+    val error: String,
 )
 
-class StartServerRequest (
-    @JsonProperty("game-server-id") val gameServerId: String,
+
+case class StartServerRequest (
+    val gameServerHash: String,
 )
 
-class StartServerResponse (
-    @JsonProperty("game-server-id") val gameServerId: String,
-    @JsonProperty("ip") val vmWhiteIp: String,
-    @JsonProperty("ports") val vmWhitePorts: Array[PortDescription],
-    @JsonProperty("success") val success: Boolean,
-    @JsonProperty("error") val error: String,
+case class StartServerResponse (
+    val gameServerHash: String,
+    @JsonProperty("serverIp") val vmWhiteIp: String,
+    @JsonProperty("serverPorts") val vmWhitePorts: Array[PortDescription],
+    val success: Boolean,
+    val error: String,
 )
 
-class PortDescription (
-    @JsonProperty("port-kind") val portKind: String,
-    @JsonProperty("port") val ports: String,
+case class PortDescription (
+    val id: String,
+    val portKind: String,
+    val port: String,
 )
 
-class StopServerRequest (
-    @JsonProperty("game-server-id") val gameServerId: String,
+case class StopServerRequest (
+    val gameServerHash: String,
 )
-class StopServerResponse (
-    @JsonProperty("success") val success: Boolean,
-    @JsonProperty("error") val error: String
-)
-
-class RemoveServerRequest (
-    @JsonProperty("game-server-id") val gameServerId: String,
+case class StopServerResponse (
+    val success: Boolean,
+    val error: String
 )
 
-class RemoveServerResponse (
-    @JsonProperty("success") val success: Boolean,
-    @JsonProperty("error") val error: String
+case class RemoveServerRequest (
+    val gameServerHash: String,
 )
 
+case class RemoveServerResponse (
+    val success: Boolean,
+    val error: String
+)
+
+case class GetServersList (
+    val servers: Seq[ServerInfo]
+)
+
+case class ServerInfo(
+    val gameServerHash: String,
+    val gameServerName: String,
+    val gameKind: String,
+    val serverIp: String,
+    val serverPorts: Array[GameServerPort],
+    val isOnline: Boolean
+)
+
+case class GetUserServersRequest (
+    val kind: String,
+    val isPublic: Boolean
+)
+
+case class UpdateServerRequest (
+    val gameServerHash: String,
+    val isPublic: Boolean
+)
+
+case class MessageResponse (
+    val message: String,
+    val success: Boolean
+)
 

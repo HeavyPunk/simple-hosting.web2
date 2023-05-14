@@ -15,13 +15,25 @@ import components.clients.curseforge.clients.files.CurseForgeFilesClient
 import io.github.heavypunk.compositor.client.{CompositorClient, CommonCompositorClient}
 import io.github.heavypunk.compositor.client.settings.ClientSettings
 import java.net.URI
+import io.github.heavypunk.controller.client.ControllerClient
+import io.github.heavypunk.controller.client.Settings
+import io.github.heavypunk.controller.client.server.CommonControllerServerClient
+import io.github.heavypunk.controller.client.server.ControllerServerClient
+import io.github.heavypunk.controller.client.CommonControllerClient
+import components.clients.controller.ControllerClientFactory
+import play.api.Configuration
+import play.api.Environment
 
-class ClientsModule extends AbstractModule {
+class ClientsModule(
+  environment: Environment,
+  configuration: Configuration,
+) extends AbstractModule {
   override def configure() = {
-    val curseForgeClientSettings = CurseForgeClientSettings(
-      "api.curseforge.com",
-      "$2a$10$dxU8VD6turngMqT30zZNue.LoGtogy3o9FK4.ewYX/gJfTikizCK6"
-    )
+    
+    val curseforgeUri = configuration.get[String]("app.clients.curseforge.uri")
+    val curseforgeApikey = configuration.get[String]("app.clients.curseforge.apikey")
+    val curseForgeClientSettings = CurseForgeClientSettings(curseforgeUri, curseforgeApikey)
+
     bind(classOf[CurseForgeClientSettings]).toInstance(curseForgeClientSettings)
     bind(classOf[CurseForgeCategoriesClient]).to(classOf[CommonCurseForgeCategoriesClient])
     bind(classOf[CurseForgeSoftwaresClient]).to(classOf[CommonCurseForgeSoftwaresClient])
@@ -29,8 +41,17 @@ class ClientsModule extends AbstractModule {
     bind(classOf[CurseForgeFilesClient]).to(classOf[CommonCurseForgeFilesClient])
     bind(classOf[CurseForgeClient]).to(classOf[CommonCurseForgeClient])
 
-    val compositorClientSettings = ClientSettings(new URI("http://localhost:8080"), "compositor")
+    val compositorUri = configuration.get[String]("app.clients.compositor.uri")
+    val compositorApikey = configuration.get[String]("app.clients.compositor.apikey")
+    val compositorClientSettings = ClientSettings(new URI(compositorUri), compositorApikey)
     val compositorClient = new CommonCompositorClient(compositorClientSettings)
     bind(classOf[CompositorClient]).toInstance(compositorClient)
+
+    //-----------------------------
+    val controllerClientScheme = configuration.get[String]("app.clients.controller.scheme")
+    val controllerClientHost = configuration.get[String]("app.clients.controller.host")
+    val controllerClientPort = configuration.get[Int]("app.clients.controller.port")
+    val controllerClientBaseSettings = new Settings("http", "127.0.0.1", 8989)
+    bind(classOf[Settings]).toInstance(controllerClientBaseSettings)
   }
 }

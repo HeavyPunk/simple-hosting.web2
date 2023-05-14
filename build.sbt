@@ -3,7 +3,7 @@ maintainer := "simple-hosting@simplehosting.org"
 name         := """simple-hosting.web2"""
 organization := "com.simplehosting"
 
-version := "1.0-SNAPSHOT"
+version := "05.09.23.2"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -15,7 +15,8 @@ libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0
 
 libraryDependencies += "org.apache.httpcomponents.client5" % "httpclient5"          % "5.2.1"
 libraryDependencies += "com.fasterxml.jackson.module"     %% "jackson-module-scala" % "2.14.1"
-libraryDependencies += "io.github.heavypunk" %% "simple-hosting.compositor.client" % "1.0.1" from "https://github.com/HeavyPunk/simple-hosting.compositor.client/raw/main/build/simple-hosting-compositor-client.jar"
+libraryDependencies += "io.github.heavypunk" %% "simple-hosting.compositor.client" % "20.04.23.1" from "https://github.com/HeavyPunk/simple-hosting.compositor.client/raw/main/build/simplehosting-compositor-client-20.04.23.1.jar"
+libraryDependencies += "io.github.heavypunk" %% "simple-hosting.controller.client" % "04.15.23.1" from "https://github.com/HeavyPunk/simple-hosting.controller.client/raw/master/build/simple-hosting-controller-client_2.13-04.15.23.1.jar"
 
 //Hibernate dependency
 libraryDependencies ++= Seq(
