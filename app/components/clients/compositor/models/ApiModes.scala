@@ -58,8 +58,8 @@ case class GetServersList (
 )
 
 case class ServerInfo(
-    val serverHash: String,
-    val serverName: String,
+    val gameServerHash: String,
+    val gameServerName: String,
     val gameKind: String,
     val serverIp: String,
     val serverPorts: Array[GameServerPort],
