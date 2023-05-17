@@ -14,8 +14,10 @@
         <class>business.entities.Host</class>
         <class>business.entities.FileBucket</class>
         <class>business.entities.UserFileStorage</class>
+        <class>business.entities.Game</class>
         <class>business.entities.Tariff</class>
         <class>business.entities.UserSession</class>
+        <class>business.entities.Location</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />

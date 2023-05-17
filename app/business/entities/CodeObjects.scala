@@ -5,7 +5,10 @@ case class ServerTariffHardware(
     val availableRamBytes: Long,
     val availableDiskBytes: Long,
     val availableSwapBytes: Long,
-    val vmExposePorts: Array[String]
+    val availableCpu: Long,
+    val vmExposePorts: Array[String],
+    val cpuFrequency: Long,
+    val cpuName: String,
 )
 
 case class ServerTariff(
@@ -13,4 +16,8 @@ case class ServerTariff(
     val name: String,
     val description: String,
     val hadrware: ServerTariffHardware,
+    val monthPrice: Int,
+    val isPricePerPlayer: Boolean,
+    val isMemoryPerSlot: Boolean,
+    val isCpuPerSlot: Boolean,
 )

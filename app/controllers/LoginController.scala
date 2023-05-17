@@ -48,6 +48,7 @@ class LoginController @Inject() (
                     user.email = req.email // TODO: replace this ugly hack
                     user.login = req.login
                     user.passwdHash = PasswordHasher.hash(req.password)
+                    user.isTestPeriodAvailable = true
                     val userCreated = userStorage.add(user)
                     if (!userCreated)
                         Future.successful(InternalServerError)

@@ -22,6 +22,7 @@ import jakarta.persistence.OneToMany
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.CascadeType
+import jakarta.persistence.FetchType
 
 @MappedSuperclass
 class BaseEntity{
@@ -50,6 +51,7 @@ case class User () extends BaseEntity {
     @JoinColumn(name = "session") var session: UserSession = null
     @Column(name = "is_admin") var isAdmin: Boolean = false
     @Column(name = "avatar_url") var avatarUrl: String = ""
+    @Column(name = "is_test_period_available") var isTestPeriodAvailable: Boolean = false
 }
 
 @Entity
@@ -68,6 +70,8 @@ case class GameServer () extends BaseEntity {
     @Column(name = "uuid") var uuid: String = ""
     @Column(name = "kind") var kind: String = ""
     @Column(name = "version") var version: String = ""
+    @ManyToOne()
+    @JoinColumn(name = "location") var location: Location = null
     @Column(name = "is_public") var isPublic: Boolean = false
     @Column(name = "is_active_vm") var isActiveVm: Boolean = false
     @Column(name = "is_active_server") var isActiveServer: Boolean = false
@@ -78,6 +82,14 @@ case class GameServer () extends BaseEntity {
     @OneToMany(cascade = Array(CascadeType.ALL))
     @Column(name = "ports")
     var ports: Array[GameServerPort] = null
+}
+
+@Entity
+@Table(name = "locations")
+case class Location() extends BaseEntity {
+    @Column(name = "name") var name: String = ""
+    @Column(name = "description") var description: String = ""
+    @Column(name = "test_ip") var testIp: String = ""
 }
 
 @Entity
@@ -125,9 +137,20 @@ case class UserFileStorage() extends BaseEntity {
 }
 
 @Entity
+@Table(name = "games")
+case class Game() extends BaseEntity {
+    @Column(name = "name") val name: String = ""
+    @Column(name = "description") val description: String = ""
+    @Column(name = "icon_uri") val iconUri: String = ""
+    @OneToMany(mappedBy = "game", cascade = Array(CascadeType.ALL))
+    val tariffs: Array[Tariff] = Array.empty
+}
+
+@Entity
 @Table(name = "tariffs")
 case class Tariff() extends BaseEntity {
     @Column(name = "name") val name: String = ""
+    @ManyToOne(fetch = FetchType.LAZY) val game: Game = null
     @Column(name = "description") val description: String = ""
     @Column(name = "s3_path") val path: String = null
 } 

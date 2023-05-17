@@ -22,11 +22,18 @@ class StupidTariffProvider(
                 8L * 1024 * 1024 * 1024 * 2,
                 8L * 1024 * 1024 * 1024 * 2,
                 0,
+                100, //%
                 Array(
                     "8989/tcp",
                     "25565/tcp"
-                )
-            )
+                ),
+                3_000, //MHz
+                "default"
+            ),
+            100, //руб
+            false,
+            false,
+            false
         )
     )
 
