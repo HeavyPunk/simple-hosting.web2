@@ -131,7 +131,7 @@ class LoginController @Inject() (
                 BadRequest
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[LogoutUserRequest])
-                val session = sessionStorage.FindByToken(reqObj.authToken)
+                val session = sessionStorage.findByToken(reqObj.authToken)
                 if (session.isEmpty)
                     Ok
                 else {

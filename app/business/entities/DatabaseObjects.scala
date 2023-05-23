@@ -47,7 +47,8 @@ case class User () extends BaseEntity {
     @Column(name = "login") var login: String = ""
     @Column(name = "email") var email: String = ""
     @Column(name = "passwd") var passwdHash: String = ""
-    @OneToOne(cascade = Array(CascadeType.ALL))
+
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "session") var session: UserSession = null
     @Column(name = "is_admin") var isAdmin: Boolean = false
     @Column(name = "avatar_url") var avatarUrl: String = ""
@@ -57,11 +58,11 @@ case class User () extends BaseEntity {
 @Entity
 @Table(name = "game_servers")
 case class GameServer () extends BaseEntity {
-    @ManyToOne()
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "owner")
     var owner: User = null
 
-    @ManyToOne()
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "host") var host: Host = null
 
     @Column(name = "name") var name: String = ""
@@ -70,16 +71,17 @@ case class GameServer () extends BaseEntity {
     @Column(name = "uuid") var uuid: String = ""
     @Column(name = "kind") var kind: String = ""
     @Column(name = "version") var version: String = ""
-    @ManyToOne()
+
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "location") var location: Location = null
     @Column(name = "is_public") var isPublic: Boolean = false
     @Column(name = "is_active_vm") var isActiveVm: Boolean = false
     @Column(name = "is_active_server") var isActiveServer: Boolean = false
 
-    @ManyToOne()
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "tariff") var tariff: Tariff = null
 
-    @OneToMany(cascade = Array(CascadeType.ALL))
+    @OneToMany(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @Column(name = "ports")
     var ports: Array[GameServerPort] = null
 }
@@ -109,11 +111,11 @@ case class Host() extends BaseEntity {
 @Entity
 @Table(name = "bucket")
 case class FileBucket() extends BaseEntity {
-    @OneToOne()
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "storage")
     val storage: UserFileStorage = null
 
-    @OneToOne
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "game_server")
     val server: GameServer = null
 
@@ -130,9 +132,9 @@ case class FileBucketFile() extends BaseEntity {
 @Entity
 @Table(name = "storage")
 case class UserFileStorage() extends BaseEntity {
-    @OneToOne()
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "owner") val owner: User = null
-    @OneToMany()
+    @OneToMany(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     @JoinColumn(name = "bucket") val buckets: Array[FileBucket] = null
 }
 
@@ -142,7 +144,7 @@ case class Game() extends BaseEntity {
     @Column(name = "name") val name: String = ""
     @Column(name = "description") val description: String = ""
     @Column(name = "icon_uri") val iconUri: String = ""
-    @OneToMany(mappedBy = "game", cascade = Array(CascadeType.ALL))
+    @OneToMany(mappedBy = "game", cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
     val tariffs: Array[Tariff] = Array.empty
 }
 
@@ -150,7 +152,8 @@ case class Game() extends BaseEntity {
 @Table(name = "tariffs")
 case class Tariff() extends BaseEntity {
     @Column(name = "name") val name: String = ""
-    @ManyToOne(fetch = FetchType.LAZY) val game: Game = null
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY) val game: Game = null
+    @Column(name = "specification_id") val specificationId: Long = 0
     @Column(name = "description") val description: String = ""
     @Column(name = "s3_path") val path: String = null
 } 

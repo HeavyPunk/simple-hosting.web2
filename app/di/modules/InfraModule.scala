@@ -7,6 +7,9 @@ import com.google.inject.AbstractModule
 import components.services.serializer.JacksonJsonService
 import components.services.serializer.JsonService
 import com.fasterxml.jackson.databind.SerializationFeature
+import components.services.log.Log
+import play.api.Logger
+import components.services.log.PlayFrameworkLog
 
 class InfraModule extends AbstractModule {
     override def configure(): Unit = {
@@ -15,8 +18,11 @@ class InfraModule extends AbstractModule {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
             .build()
+        val logger = Logger("")
+
         bind(classOf[JsonMapper]).toInstance(jsonMapper)
         
         bind(classOf[JsonService]).to(classOf[JacksonJsonService])
+        bind(classOf[Log]).toInstance(new PlayFrameworkLog(logger))
     }
 }

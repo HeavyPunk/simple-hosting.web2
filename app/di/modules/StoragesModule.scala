@@ -11,20 +11,25 @@ import business.services.storages.hosts.HostStorage
 import business.services.storages.tariffs.TariffStorage
 import business.services.storages.games.GamesStorage
 import business.services.storages.locations.LocationsStorage
+import com.google.inject.Guice
+import components.services.log.Log
 
 class StoragesModule extends AbstractModule {
     override def configure(): Unit = {
-        val relationEntityManager = Persistence
+        def relationEntityManager = Persistence
             .createEntityManagerFactory("com.simplehosting.relation.jpa")
             .createEntityManager()
-        val userStorage = new UserStorage(relationEntityManager)
-        val sessionStorage = new SessionStorage(relationEntityManager)
-        val tariffsStorage = new StupidTariffProvider(relationEntityManager)
-        val gameServerStorage = new GameServerStorage(relationEntityManager)
-        val hostStorage = new HostStorage(relationEntityManager)
-        val tariffStorage = new TariffStorage(relationEntityManager)
-        val gamesStorage = new GamesStorage(relationEntityManager)
-        val locationsStorage = new LocationsStorage(relationEntityManager)
+        val injector = Guice.createInjector(new InfraModule)
+        val log = injector.getInstance(classOf[Log])
+
+        val userStorage = new UserStorage(relationEntityManager, log.forContext("UserStorage"))
+        val sessionStorage = new SessionStorage(relationEntityManager, log.forContext("SessionStorage"))
+        val tariffsStorage = new StupidTariffProvider(relationEntityManager, log.forContext("StupidTariffProvider"))
+        val gameServerStorage = new GameServerStorage(relationEntityManager, log.forContext("GameServerStorage"))
+        val hostStorage = new HostStorage(relationEntityManager, log.forContext("HostStorage"))
+        val tariffStorage = new TariffStorage(relationEntityManager, log.forContext("TariffStorage"))
+        val gamesStorage = new GamesStorage(relationEntityManager, log.forContext("GameStorage"))
+        val locationsStorage = new LocationsStorage(relationEntityManager, log.forContext("LocationStorage"))
 
         bind(classOf[SessionStorage]).toInstance(sessionStorage)
         bind(classOf[UserStorage]).toInstance(userStorage)

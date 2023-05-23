@@ -3,9 +3,11 @@ package business.services.storages
 import jakarta.persistence.EntityManager
 import org.hibernate.Session
 import scala.reflect.ClassTag
+import components.services.log.Log
 
 abstract class BaseStorage[T: ClassTag] {
     val entityManager: EntityManager
+    val log: Log
     def add(item: T): Boolean = addInternal(item)
     def findById[TKey](id: TKey): Option[T] = findByIdInternal(id)
     def get[TKey](key: TKey): T = getInternal(key)
@@ -18,42 +20,54 @@ abstract class BaseStorage[T: ClassTag] {
     }
 
     protected def findByIdInternal[TKey](id: TKey): Option[T] = {
-        val hibernateSession = entityManager.unwrap(classOf[Session])
-        val t = implicitly[ClassTag[T]].runtimeClass
-        val item = hibernateSession.find(t, id).asInstanceOf[T] // TODO: Чёт херня какая-то, надо тесты на это написать
-        if (item != null) Some(item) else None
+        try {
+            val transaction = entityManager.getTransaction
+            if (!transaction.isActive)
+                transaction.begin
+            val t = implicitly[ClassTag[T]].runtimeClass
+            val item = entityManager.find(t, id).asInstanceOf[T]
+            if (item == null) None else Some(item)
+        } catch {
+            case e: RuntimeException => log.error(s"Error when finding $id: ${e.fillInStackTrace.toString}"); None
+        }
     }
 
     protected def addInternal(item: T): Boolean = {
         try {
-            entityManager.getTransaction().begin()
-            entityManager.persist(item)
-            entityManager.getTransaction().commit()
+            val transaction = entityManager.getTransaction
+            if (!transaction.isActive)
+                transaction.begin()
+            entityManager.merge(item)
+            transaction.commit()
             true
         } catch {
-            case e: RuntimeException => false
+            case e: RuntimeException => log.error(s"Error when adding item: ${e.fillInStackTrace.toString}"); false
         }
     }
 
     protected def removeInternal(item: T): Boolean = {
         try {
-            entityManager.getTransaction().begin()
+            val transaction = entityManager.getTransaction
+            if (!transaction.isActive)
+                transaction.begin
             entityManager.remove(item)
-            entityManager.getTransaction().commit()
+            transaction.commit
             true
         } catch {
-            case e: RuntimeException => false
+            case e: RuntimeException => log.error(s"Error when removing item: ${e.fillInStackTrace.toString}"); false
         }
     }
 
     protected def updateInternal(item: T): Boolean = {
         try {
-            entityManager.getTransaction().begin()
-            entityManager.persist(item)
-            entityManager.getTransaction().commit()
+            val transaction = entityManager.getTransaction
+            if (!transaction.isActive)
+                transaction.begin
+            entityManager.merge(item)
+            transaction.commit
             true
         } catch {
-            case e: RuntimeException => false
+            case e: RuntimeException => log.error(s"Error when updating item: ${e.fillInStackTrace.toString}"); false
         }
     }
 }

@@ -4,8 +4,12 @@ import scala.jdk.CollectionConverters._
 import business.services.storages.BaseStorage
 import business.entities.Game
 import jakarta.persistence.EntityManager
+import components.services.log.Log
 
-class GamesStorage(em: EntityManager) extends BaseStorage[Game] {
+class GamesStorage(em: EntityManager, logger: Log) extends BaseStorage[Game] {
+
+    override val log: Log = logger
+
     override val entityManager: EntityManager = em
 
     def getAll: List[Game] = {

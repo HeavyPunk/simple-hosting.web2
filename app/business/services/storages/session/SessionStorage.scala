@@ -7,18 +7,21 @@ import business.entities
 import java.util.UUID
 import org.hibernate
 import business.services.storages.BaseStorage
+import components.services.log.Log
 
 
 class SessionStorage @Inject() (
-    em: EntityManager
+    em: EntityManager,
+    logger: Log
 ) extends BaseStorage[entities.UserSession] {
 
     override val entityManager: EntityManager = em
+    override val log = logger
 
-    def FindByToken(token: String): Option[entities.UserSession] = {
+    def findByToken(token: String): Option[entities.UserSession] = {
         val res = em.createQuery("from UserSession where token=:token", classOf[entities.UserSession])
             .setParameter("token", token)
-            .getResultList()
+            .getResultList
         if (res == null || res.isEmpty) None else Some(res.get(0))
     }
 }
