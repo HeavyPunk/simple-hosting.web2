@@ -10,6 +10,9 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.13.10"
 
 libraryDependencies += guice
+
+libraryDependencies += "javax.xml.bind" % "jaxb-api" % "2.3.1"
+
 libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test
 
