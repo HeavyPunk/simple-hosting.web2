@@ -5,10 +5,13 @@ import business.entities.GameServerPort
 
 case class CreateServerRequest (
     @JsonProperty("name") val vmName: String,
-    val version: String,
+    val gameId: Long,
+    val locationId: Long,
     val tariffId: String,
-    val rentTime: String,
-    val slotsCount: Int,
+    val period: Long,
+    val isTestPeriod: Boolean,
+    val promoCode: String,
+    val slots: Int,
 )
 
 case class CreateServerResponse (
@@ -74,10 +77,5 @@ case class GetUserServersRequest (
 case class UpdateServerRequest (
     val gameServerHash: String,
     val isPublic: Boolean
-)
-
-case class MessageResponse (
-    val message: String,
-    val success: Boolean
 )
 

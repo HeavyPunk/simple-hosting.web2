@@ -42,3 +42,7 @@ POST /account/login controllers.LoginController.login()
 POST /account/logout controllers.LoginController.logout()
 
 GET /account/me controllers.LoginController.me()
+
+GET /tariff/get-for-game/:id controllers.TariffController.getTariffsForGame(id: Long)
+
+GET /tariff/get-all-games controllers.TariffController.getAllGamesTariffs()

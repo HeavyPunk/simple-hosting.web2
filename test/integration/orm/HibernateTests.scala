@@ -1,4 +1,4 @@
-package orm
+package integration.orm
 
 import jakarta.persistence.Persistence
 import business.entities.User

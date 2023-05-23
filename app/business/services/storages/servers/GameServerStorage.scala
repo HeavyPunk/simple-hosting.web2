@@ -5,12 +5,15 @@ import business.entities.GameServer
 import jakarta.persistence.EntityManager
 import java.{util => ju}
 import business.entities.User
+import components.services.log.Log
 
 class GameServerStorage(
     val em: EntityManager,
+    val logger: Log
 ) extends BaseStorage[GameServer] {
 
     override val entityManager: EntityManager = em
+    override val log = logger
     
     def findByHash(id: String): Option[GameServer] = {
         val res = em.createQuery("from GameServer where uuid=:id", classOf[GameServer])

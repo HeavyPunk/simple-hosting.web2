@@ -16,10 +16,9 @@ import business.services.storages.servers.GameServerStorage
 import io.github.heavypunk.controller.client.Settings
 import components.clients.controller.StopGameServerRequest
 import play.api.mvc
-import components.basic.UserTypedKey
+import components.basic.{ UserTypedKey, MessageResponse }
 import business.entities.User
 import scala.concurrent.Future
-import components.clients.controller.MessageResponse
 
 class GameServerControlController @Inject() (
     val controllerComponents: ControllerComponents,

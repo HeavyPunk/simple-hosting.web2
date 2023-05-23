@@ -48,6 +48,7 @@ class LoginController @Inject() (
                     user.email = req.email // TODO: replace this ugly hack
                     user.login = req.login
                     user.passwdHash = PasswordHasher.hash(req.password)
+                    user.isTestPeriodAvailable = true
                     val userCreated = userStorage.add(user)
                     if (!userCreated)
                         Future.successful(InternalServerError)
@@ -130,7 +131,7 @@ class LoginController @Inject() (
                 BadRequest
             else {
                 val reqObj = jsonizer.deserialize(rawBody.get.toString, classOf[LogoutUserRequest])
-                val session = sessionStorage.FindByToken(reqObj.authToken)
+                val session = sessionStorage.findByToken(reqObj.authToken)
                 if (session.isEmpty)
                     Ok
                 else {

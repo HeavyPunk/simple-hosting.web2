@@ -26,7 +26,7 @@ import business.entities.GameServer
 import business.services.storages.tariffs.TariffStorage
 import business.entities.User
 import play.api.libs.typedmap.TypedKey
-import components.basic.UserTypedKey
+import components.basic.{ UserTypedKey, MessageResponse }
 import components.clients.controller.ControllerUtils
 import components.clients.controller.ControllerClientFactory
 import io.github.heavypunk.controller.client.Settings
@@ -41,7 +41,7 @@ import components.clients.compositor.models.{
 }
 import scala.jdk.CollectionConverters._
 import java.util.UUID
-import components.clients.compositor.models.MessageResponse
+import business.services.storages.locations.LocationsStorage
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -51,7 +51,8 @@ class ServerControlController @Inject()(
     val jsonizer: JsonService,
     val tariffsGetter: TariffGetter,
     val tariffStorage: TariffStorage,
-    val gameServerStorage: GameServerStorage
+    val gameServerStorage: GameServerStorage,
+    val locationsStorage: LocationsStorage,
 ) extends BaseController {
 
     def findUserForCurrentRequest(request: Request[AnyContent]): Option[User] = {
@@ -97,6 +98,7 @@ class ServerControlController @Inject()(
                                 Future.successful(InternalServerError(serializeError("Не получилось создать сервер, пожалуйста, попробуйте позже")))
                             else {
                                 val databaseTariff = tariffStorage.get(tariff.id)
+                                val location = locationsStorage.findById(0)
                                 val server = GameServer()
                                 server.name = reqObj.vmName
                                 server.slug = serverSlug.toString
@@ -104,9 +106,11 @@ class ServerControlController @Inject()(
                                 server.owner = user.get
                                 server.uuid = respFuture.vmId
                                 server.kind = "minecraft"
+                                server.location = location.get
                                 gameServerStorage.add(server)
                                 Future.successful(Ok(jsonizer.serialize(new CreateServerResponse(respFuture.vmId, true, ""))))
                             }
+                            
                         }
                     }
                 }
