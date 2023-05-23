@@ -16,7 +16,7 @@ import components.services.log.Log
 
 class StoragesModule extends AbstractModule {
     override def configure(): Unit = {
-        def relationEntityManager = Persistence
+        val relationEntityManager = Persistence
             .createEntityManagerFactory("com.simplehosting.relation.jpa")
             .createEntityManager()
         val injector = Guice.createInjector(new InfraModule)

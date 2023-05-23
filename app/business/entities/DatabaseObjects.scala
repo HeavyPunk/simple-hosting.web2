@@ -27,8 +27,8 @@ import jakarta.persistence.FetchType
 @MappedSuperclass
 class BaseEntity{
     @Id
-    @GeneratedValue(generator = "increment")
-    @GenericGenerator(name = "increment", strategy = "increment")
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id", updatable = false, nullable = false)
     var id: Long = 0
     @Temporal(TemporalType.TIMESTAMP)
     var creationDate: Date = null
