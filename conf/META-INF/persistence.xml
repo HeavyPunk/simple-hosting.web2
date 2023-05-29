@@ -29,6 +29,15 @@
             <property name="hibernate.format_sql" value="true" />
             <property name="hibernate.hbm2ddl.auto" value="update" />
             <property name="hibernate.jdbc.time_zone" value="UTC"/>
+            <property name="hibernate.connection.provider_disables_autocommit" value="false"/>
+	        <property name="hibernate.connection.pool_size" value="10" />
+            <property name="hibernate.enable_lazy_load_no_trans" value="true"/>
+
+            <property name="hibernate.c3p0.min_size" value="5"/>
+            <property name="hibernate.c3p0.max_size" value="30"/>
+            <property name="hibernate.c3p0.acquire_increment" value="5"/>
+            <property name="hibernate.c3p0.timeout" value="1800"/>
+            
         </properties>
 
     </persistence-unit>

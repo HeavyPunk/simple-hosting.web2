@@ -11,10 +11,15 @@ class GamesStorage(em: EntityManager, logger: Log) extends BaseStorage[Game] {
     override val log: Log = logger
 
     override val entityManager: EntityManager = em
-
-    def getAll: List[Game] = {
-        val res = em.createQuery("from Game", classOf[Game])
-            .getResultList
-        res.asScala.toList
-    }
+    
+    def getAll: Option[List[Game]] = {
+        val enm = em.getEntityManagerFactory.createEntityManager
+        val res = try {
+            enm.createQuery("from Game", classOf[Game])
+                .getResultList
+        } finally {
+            enm.close
+        }
+        if (res == null || res.isEmpty) None else Some(res.asScala.toList)
+  }
 }

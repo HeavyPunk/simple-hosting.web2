@@ -44,7 +44,7 @@ class LoginController @Inject() (
                 if (loginIsExist.isDefined || emailIsExist.isDefined)
                     Future.successful(BadRequest(s"User with this login or email already exists"))
                 else {
-                    val user = User()
+                    var user = User()
                     user.email = req.email // TODO: replace this ugly hack
                     user.login = req.login
                     user.passwdHash = PasswordHasher.hash(req.password)
@@ -53,9 +53,9 @@ class LoginController @Inject() (
                     if (!userCreated)
                         Future.successful(InternalServerError)
                     else {
+                        user = userStorage.findByLogin(user.login).get
                         val newSession = new UserSession()
                         newSession.token = UUID.randomUUID().toString
-                        sessionStorage.add(newSession)
                         user.session = newSession
                         userStorage.update(user)
                         Future.successful(Created(jsonizer.serialize(LoginUserResponse(
@@ -101,7 +101,6 @@ class LoginController @Inject() (
 
                         val newSession = new UserSession()
                         newSession.token = UUID.randomUUID().toString
-                        sessionStorage.add(newSession)
                         user.get.session = newSession
                         userStorage.update(user.get)
 

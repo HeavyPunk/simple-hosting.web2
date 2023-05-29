@@ -23,15 +23,19 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.CascadeType
 import jakarta.persistence.FetchType
+import jakarta.persistence.SequenceGenerator
 
 @MappedSuperclass
 class BaseEntity{
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", updatable = false, nullable = false)
+    @GenericGenerator(name="kaugen" , strategy="increment")
+    @GeneratedValue(generator="kaugen")
     var id: Long = 0
+
     @Temporal(TemporalType.TIMESTAMP)
     var creationDate: Date = null
+
     @Temporal(TemporalType.TIMESTAMP)
     var updateDate: Date = null
 
@@ -53,6 +57,8 @@ case class User () extends BaseEntity {
     @Column(name = "is_admin") var isAdmin: Boolean = false
     @Column(name = "avatar_url") var avatarUrl: String = ""
     @Column(name = "is_test_period_available") var isTestPeriodAvailable: Boolean = false
+
+    override def equals(other: Any): Boolean = other.isInstanceOf[User] && other.asInstanceOf[User].login.equals(this.login)
 }
 
 @Entity
@@ -144,7 +150,7 @@ case class Game() extends BaseEntity {
     @Column(name = "name") val name: String = ""
     @Column(name = "description") val description: String = ""
     @Column(name = "icon_uri") val iconUri: String = ""
-    @OneToMany(mappedBy = "game", cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "game", cascade = Array(CascadeType.ALL)) //TODO: вернуть fetch = FetchType.LAZY
     val tariffs: Array[Tariff] = Array.empty
 }
 
@@ -152,7 +158,7 @@ case class Game() extends BaseEntity {
 @Table(name = "tariffs")
 case class Tariff() extends BaseEntity {
     @Column(name = "name") val name: String = ""
-    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY) val game: Game = null
+    @ManyToOne(cascade = Array(CascadeType.ALL)) val game: Game = null //TODO: тут тоже
     @Column(name = "specification_id") val specificationId: Long = 0
     @Column(name = "description") val description: String = ""
     @Column(name = "s3_path") val path: String = null
@@ -163,4 +169,6 @@ case class Tariff() extends BaseEntity {
 case class UserSession() extends BaseEntity {
     @Column(name = "token") var token: String = null
     @Column(name = "data") var data: String = null
+
+    override def equals(other: Any): Boolean = other.isInstanceOf[UserSession] && other.asInstanceOf[UserSession].token.equals(this.token)
 }

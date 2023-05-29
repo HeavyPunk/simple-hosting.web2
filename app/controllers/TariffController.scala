@@ -13,6 +13,8 @@ import business.services.storages.locations.LocationsStorage
 import components.clients.tariffs.GetAllGamesResponse
 import components.clients.tariffs.Location
 import components.clients
+import business.entities.Game
+import business.entities
 
 class TariffController @Inject() (
     val controllerComponents: ControllerComponents,
@@ -55,12 +57,15 @@ class TariffController @Inject() (
                             specification.hadrware.cpuName,
                             specification.isMemoryPerSlot,
                             specification.isCpuPerSlot,
-                            locations.map(l => clients.tariffs.Location(
-                                l.id,
-                                l.name,
-                                l.description,
-                                l.testIp,
-                            )).toArray
+                            if (locations.isEmpty)
+                                Array.empty[clients.tariffs.Location]
+                            else
+                                locations.get.map(l => clients.tariffs.Location(
+                                    l.id,
+                                    l.name,
+                                    l.description,
+                                    l.testIp,
+                                )).toArray
                         )}
                 )
             )))
@@ -68,41 +73,48 @@ class TariffController @Inject() (
     }}
 
     def getAllGamesTariffs() = Action.async { implicit request => {
-        val games = gamesStorage.getAll
-        val locations = locationStorage.getAll
+        var games = gamesStorage.getAll
+        var locations = locationStorage.getAll
         Future.successful(Ok(jsonizer.serialize(GetAllGamesResponse(
-            games map { g => GameInfoResponse(
-                g.id,
-                g.name,
-                g.iconUri,
-                g.description,
-                g.tariffs map { t =>
-                    val specification = tariffGetter.findTariffById(t.id).get
-                    GameTariff(
-                        t.id,
-                        t.game.id,
-                        t.name,
-                        t.description,
-                        0,
-                        100,
-                        specification.monthPrice,
-                        specification.isPricePerPlayer,
-                        specification.hadrware.availableCpu,
-                        specification.hadrware.availableDiskBytes / 1024 / 1024,
-                        specification.hadrware.availableRamBytes / 1024 / 1024,
-                        specification.hadrware.cpuFrequency,
-                        specification.hadrware.cpuName,
-                        specification.isMemoryPerSlot,
-                        specification.isCpuPerSlot,
-                        locations.map(l => clients.tariffs.Location(
-                            l.id,
-                            l.name,
-                            l.description,
-                            l.testIp,
-                        )).toArray
-                    )
-                }
-            )}
+            if (games.isEmpty) Array.empty[GameInfoResponse]
+            else 
+                games.get map { g => 
+                    val tariffs = if (g.tariffs != null) g.tariffs else Array.empty[entities.Tariff]
+                    GameInfoResponse(
+                    g.id,
+                    g.name,
+                    g.iconUri,
+                    g.description,
+                    tariffs map { t =>
+                        val specification = tariffGetter.findTariffById(t.id).get
+                        GameTariff(
+                            t.id,
+                            t.game.id,
+                            t.name,
+                            t.description,
+                            0,
+                            100,
+                            specification.monthPrice,
+                            specification.isPricePerPlayer,
+                            specification.hadrware.availableCpu,
+                            specification.hadrware.availableDiskBytes / 1024 / 1024,
+                            specification.hadrware.availableRamBytes / 1024 / 1024,
+                            specification.hadrware.cpuFrequency,
+                            specification.hadrware.cpuName,
+                            specification.isMemoryPerSlot,
+                            specification.isCpuPerSlot,
+                            if (locations.isEmpty)
+                                Array.empty[clients.tariffs.Location]
+                            else
+                                locations.get.map(l => clients.tariffs.Location(
+                                    l.id,
+                                    l.name,
+                                    l.description,
+                                    l.testIp,
+                                )).toArray
+                        )
+                    }
+                )}
         ))))
     }}
 }

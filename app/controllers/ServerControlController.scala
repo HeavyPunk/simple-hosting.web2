@@ -275,7 +275,7 @@ class ServerControlController @Inject()(
                 else {
                     val userServers = gameServerStorage.findServersByOwner(user.get)
                     if (userServers.isEmpty)
-                        Future.successful(NotFound(jsonizer.serialize(GetServersList(Seq.empty))))
+                        Future.successful(Ok(jsonizer.serialize(GetServersList(Seq.empty))))
                     else{
                         val servers = userServers.get.asScala.toList
                         Future.successful(Ok(jsonizer.serialize(

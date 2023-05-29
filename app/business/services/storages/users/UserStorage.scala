@@ -19,23 +19,39 @@ class UserStorage @Inject()(
     val log = logger
 
     def findByLogin(login: String): Option[User] = {
-        val res = em.createQuery("from User where login=:login", classOf[User])
-            .setParameter("login", login)
-            .getResultList
+        val enm = em.getEntityManagerFactory.createEntityManager
+        val res = try {
+            enm.createQuery("from User where login=:login", classOf[User])
+                .setParameter("login", login)
+                .getResultList
+        } finally {
+            enm.close
+        }
+        
         if (res == null || res.isEmpty) None else Some(res.get(0))
     }
 
     def findBySession[TId](session: UserSession): Option[User] = {
-        val res = em.createQuery("from User where session=:session", classOf[User])
-            .setParameter("session", session)
-            .getResultList
+        val enm = em.getEntityManagerFactory.createEntityManager
+        val res = try {
+            enm.createQuery("from User where session=:session", classOf[User])
+                .setParameter("session", session)
+                .getResultList
+        } finally {
+            enm.close
+        }
         if (res == null || res.isEmpty) None else Some(res.get(0))
     }
 
     def findByEmail(email: String): Option[User] = {
-        val res = em.createQuery("from User where email=:email", classOf[User])
-            .setParameter("email", email)
-            .getResultList
+        val enm = em.getEntityManagerFactory.createEntityManager
+        val res = try { 
+            enm.createQuery("from User where email=:email", classOf[User])
+                .setParameter("email", email)
+                .getResultList
+        } finally {
+            enm.close
+        }
         if (res == null || res.isEmpty) None else Some(res.get(0))
     }
 }

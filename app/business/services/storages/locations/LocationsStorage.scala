@@ -10,8 +10,13 @@ class LocationsStorage(em: EntityManager, logger: Log) extends BaseStorage[Locat
     override val entityManager: EntityManager = em
     override val log = logger
     def getAll = {
-        val res = em.createQuery("from Location", classOf[Location])
-            .getResultList()
-        res.asScala.toList
+        val enm = em.getEntityManagerFactory.createEntityManager
+        val res = try {
+            enm.createQuery("from Location", classOf[Location])
+                .getResultList()
+        } finally {
+            enm.close
+        }
+        if (res == null || res.isEmpty) None else Some(res.asScala.toList)
     }
 }

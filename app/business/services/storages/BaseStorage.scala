@@ -41,7 +41,7 @@ abstract class BaseStorage[T: ClassTag] {
             transaction.commit()
             true
         } catch {
-            case e: RuntimeException => log.error(s"Error when adding item: ${e.fillInStackTrace.toString}"); false
+            case e: Exception => log.error(s"Error when adding item: ${e.fillInStackTrace.toString}"); false
         }
     }
 
@@ -50,11 +50,12 @@ abstract class BaseStorage[T: ClassTag] {
             val transaction = entityManager.getTransaction
             if (!transaction.isActive)
                 transaction.begin
+            entityManager.merge(item)
             entityManager.remove(item)
             transaction.commit
             true
         } catch {
-            case e: RuntimeException => log.error(s"Error when removing item: ${e.fillInStackTrace.toString}"); false
+            case e: Exception => log.error(s"Error when removing item: ${e.fillInStackTrace.toString}"); false
         }
     }
 
@@ -67,7 +68,7 @@ abstract class BaseStorage[T: ClassTag] {
             transaction.commit
             true
         } catch {
-            case e: RuntimeException => log.error(s"Error when updating item: ${e.fillInStackTrace.toString}"); false
+            case e: Exception => log.error(s"Error when updating item: ${e.fillInStackTrace.toString}"); false
         }
     }
 }

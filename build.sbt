@@ -3,7 +3,7 @@ maintainer := "simple-hosting@simplehosting.org"
 name         := """simple-hosting.web2"""
 organization := "com.simplehosting"
 
-version := "05.21.23.3"
+version := "05.29.23.1"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -23,8 +23,9 @@ libraryDependencies += "io.github.heavypunk" %% "simple-hosting.controller.clien
 
 //Hibernate dependency
 libraryDependencies ++= Seq(
-    "org.hibernate" % "hibernate-core" % "6.2.0.Final",
+    "org.hibernate" % "hibernate-core" % "6.2.3.Final",
     "org.hibernate" % "hibernate-entitymanager" % "4.1.8.Final",
+    "org.hibernate" % "hibernate-c3p0" % "6.2.3.Final",
     // https://mvnrepository.com/artifact/org.postgresql/postgresql
     "org.postgresql" % "postgresql" % "42.5.1",
 )

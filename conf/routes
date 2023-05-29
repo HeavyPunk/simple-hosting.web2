@@ -1,48 +1,45 @@
-GET / controllers.HomeController.index()
 
-GET /assets/*file controllers.ExternalAssets.at(path="public", file)
+POST /api/external/curseforge/mods/search controllers.CurseForgeProxyController.searchMods()
+GET /api/external/curseforge/mods/:id controllers.CurseForgeProxyController.getModById(id: Int)
+GET /api/external/curseforge/mods/:id/description controllers.CurseForgeProxyController.getModFullDescription(id: Int)
 
-POST /external/curseforge/mods/search controllers.CurseForgeProxyController.searchMods()
-GET /external/curseforge/mods/:id controllers.CurseForgeProxyController.getModById(id: Int)
-GET /external/curseforge/mods/:id/description controllers.CurseForgeProxyController.getModFullDescription(id: Int)
+POST /api/external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
+POST /api/external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()
 
-POST /external/curseforge/softwares/versions controllers.CurseForgeProxyController.getMinecraftVersions()
-POST /external/curseforge/softwares/modloaders controllers.CurseForgeProxyController.getMinecraftModloaders()
-
-POST /external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
-GET /external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass() 
+POST /api/external/curseforge/categories controllers.CurseForgeProxyController.getCategories()
+GET /api/external/curseforge/categories/grouped-by-class controllers.CurseForgeProxyController.getCategoriesGroupedByClass() 
 
 
-POST /servers/compositor/create-server controllers.ServerControlController.createServer()
+POST /api/servers/compositor/create-server controllers.ServerControlController.createServer()
 
-POST /servers/compositor/stop-server controllers.ServerControlController.stopServer()
+POST /api/servers/compositor/stop-server controllers.ServerControlController.stopServer()
 
-POST /servers/compositor/start-server controllers.ServerControlController.startServer()
+POST /api/servers/compositor/start-server controllers.ServerControlController.startServer()
 
-POST /servers/compositor/remove-server controllers.ServerControlController.removeServer()
+POST /api/servers/compositor/remove-server controllers.ServerControlController.removeServer()
 
-POST /servers/compositor/get-server controllers.ServerControlController.getUserServers()
+POST /api/servers/compositor/get-server controllers.ServerControlController.getUserServers()
 
-POST /servers/compositor/get-server/:hash controllers.ServerControlController.getUserServerByHash(hash)
+POST /api/servers/compositor/get-server/:hash controllers.ServerControlController.getUserServerByHash(hash)
 
-POST /servers/compositor/update-server controllers.ServerControlController.updateServer()
+POST /api/servers/compositor/update-server controllers.ServerControlController.updateServer()
 
-POST /servers/controller/start-server controllers.GameServerControlController.startServer()
+POST /api/servers/controller/start-server controllers.GameServerControlController.startServer()
 
-POST /servers/controller/stop-server controllers.GameServerControlController.stopServer()
+POST /api/servers/controller/stop-server controllers.GameServerControlController.stopServer()
 
-POST /external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
-POST /external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
-POST /external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()
+POST /api/external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
+POST /api/external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
+POST /api/external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()
 
-POST /account/register controllers.LoginController.register()
+POST /api/account/register controllers.LoginController.register()
 
-POST /account/login controllers.LoginController.login()
+POST /api/account/login controllers.LoginController.login()
 
-POST /account/logout controllers.LoginController.logout()
+POST /api/account/logout controllers.LoginController.logout()
 
-GET /account/me controllers.LoginController.me()
+GET /api/account/me controllers.LoginController.me()
 
-GET /tariff/get-for-game/:id controllers.TariffController.getTariffsForGame(id: Long)
+GET /api/tariff/get-for-game/:id controllers.TariffController.getTariffsForGame(id: Long)
 
-GET /tariff/get-all-games controllers.TariffController.getAllGamesTariffs()
+GET /api/tariff/get-all-games controllers.TariffController.getAllGamesTariffs()
