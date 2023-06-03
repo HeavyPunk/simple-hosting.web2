@@ -20,55 +20,68 @@ abstract class BaseStorage[T: ClassTag] {
     }
 
     protected def findByIdInternal[TKey](id: TKey): Option[T] = {
+        val enm = entityManager.getEntityManagerFactory.createEntityManager
         try {
-            val transaction = entityManager.getTransaction
+            val transaction = enm.getTransaction
             if (!transaction.isActive)
                 transaction.begin
             val t = implicitly[ClassTag[T]].runtimeClass
-            val item = entityManager.find(t, id).asInstanceOf[T]
+            val item = enm.find(t, id).asInstanceOf[T]
             if (item == null) None else Some(item)
         } catch {
             case e: RuntimeException => log.error(s"Error when finding $id: ${e.fillInStackTrace.toString}"); None
+        } finally {
+            enm.close
         }
     }
 
     protected def addInternal(item: T): Boolean = {
+        val enm = entityManager.getEntityManagerFactory.createEntityManager
         try {
-            val transaction = entityManager.getTransaction
+            val transaction = enm.getTransaction
             if (!transaction.isActive)
-                transaction.begin()
-            entityManager.merge(item)
+                transaction.begin
+            enm.merge(item)
             transaction.commit()
             true
         } catch {
             case e: Exception => log.error(s"Error when adding item: ${e.fillInStackTrace.toString}"); false
+        } finally {
+            enm.close
         }
     }
 
     protected def removeInternal(item: T): Boolean = {
+        val enm = entityManager.getEntityManagerFactory.createEntityManager
         try {
-            val transaction = entityManager.getTransaction
+            val transaction = enm.getTransaction
             if (!transaction.isActive)
                 transaction.begin
-            entityManager.merge(item)
-            entityManager.remove(item)
+            val mergedItem = enm.merge(item)
+            if (enm.contains(mergedItem))
+                enm.remove(mergedItem)
             transaction.commit
             true
         } catch {
             case e: Exception => log.error(s"Error when removing item: ${e.fillInStackTrace.toString}"); false
+        } finally {
+            enm.close
         }
     }
 
     protected def updateInternal(item: T): Boolean = {
+        val enm = entityManager.getEntityManagerFactory.createEntityManager
         try {
-            val transaction = entityManager.getTransaction
+            val transaction = enm.getTransaction
             if (!transaction.isActive)
                 transaction.begin
-            entityManager.merge(item)
+            enm.merge(item)
             transaction.commit
             true
         } catch {
             case e: Exception => log.error(s"Error when updating item: ${e.fillInStackTrace.toString}"); false
+        } finally {
+            enm.close
         }
     }
 }

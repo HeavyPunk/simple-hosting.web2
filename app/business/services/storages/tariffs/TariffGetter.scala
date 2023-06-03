@@ -19,7 +19,7 @@ class StupidTariffProvider(
     val log = logger
 
     val tariffs = Map(
-        0L -> ServerTariff(0, "vanilla-minecraft-1.19.3", "",
+        0L -> ServerTariff(1, "vanilla-minecraft-1.19.3", "",
             ServerTariffHardware(
                 "kirieshki/simple-hosting-minecraft-vanilla:preview-15.04.23.1",
                 8L * 1024 * 1024 * 1024 * 2,
@@ -38,7 +38,7 @@ class StupidTariffProvider(
             false,
             false
         ),
-        1L -> ServerTariff(0, "standard-vanilla-minecraft-server-1.19.3", "",
+        1L -> ServerTariff(2, "standard-vanilla-minecraft-server-1.19.3", "",
             ServerTariffHardware(
                 "kirieshki/simple-hosting-minecraft-vanilla:preview-15.04.23.1",
                 4L * 1024 * 1024 * 1024,
@@ -57,7 +57,7 @@ class StupidTariffProvider(
             false,
             false
         ),
-        2L -> ServerTariff(0, "low-cs1.6", "",
+        2L -> ServerTariff(3, "low-cs1.6", "",
             ServerTariffHardware(
                 "kirieshki/cs1.6:preview-23.05.21.1",
                 2L * 1024 * 1024 * 1024,
@@ -76,7 +76,7 @@ class StupidTariffProvider(
             false,
             false
         ),
-        3L -> ServerTariff(0, "standard-cs1.6", "",
+        3L -> ServerTariff(4, "standard-cs1.6", "",
             ServerTariffHardware(
                 "kirieshki/cs1.6:preview-23.05.21.1",
                 4L * 1024 * 1024 * 1024,
@@ -95,7 +95,7 @@ class StupidTariffProvider(
             false,
             false
         ),
-        4L -> ServerTariff(0, "low-garrys-mod", "",
+        4L -> ServerTariff(5, "low-garrys-mod", "",
             ServerTariffHardware(
                 "kirieshki/garrys-mod:preview-23.05.21.1",
                 2L * 1024 * 1024 * 1024,
@@ -114,7 +114,7 @@ class StupidTariffProvider(
             false,
             false
         ),
-        5L -> ServerTariff(0, "low-garrys-mod", "",
+        5L -> ServerTariff(6, "low-garrys-mod", "",
             ServerTariffHardware(
                 "kirieshki/garrys-mod:preview-23.05.21.1",
                 4L * 1024 * 1024 * 1024,

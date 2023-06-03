@@ -22,4 +22,17 @@ object ControllerUtils {
         } 
         if (controllerPort.isDefined) Some(controllerPort.get.toInt) else None
     }
+
+    def checkForServerRunning(controllerClientFactory: ControllerClientFactory, controllerBaseSettings: Settings): Boolean = {
+        try {
+            val client = controllerClientFactory.getControllerClient(new Settings(
+                controllerBaseSettings.scheme,
+                controllerBaseSettings.host,
+                controllerBaseSettings.port
+            ))
+            client.state.ping().success
+        } catch {
+            case e: Exception => false
+        }
+    }
 }

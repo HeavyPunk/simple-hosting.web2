@@ -42,6 +42,7 @@ import components.clients.compositor.models.{
 import scala.jdk.CollectionConverters._
 import java.util.UUID
 import business.services.storages.locations.LocationsStorage
+import business.services.storages.users.UserStorage
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -53,6 +54,7 @@ class ServerControlController @Inject()(
     val tariffStorage: TariffStorage,
     val gameServerStorage: GameServerStorage,
     val locationsStorage: LocationsStorage,
+    val userStorage: UserStorage,
 ) extends BaseController {
 
     def findUserForCurrentRequest(request: Request[AnyContent]): Option[User] = {
@@ -98,17 +100,20 @@ class ServerControlController @Inject()(
                                 Future.successful(InternalServerError(serializeError("Не получилось создать сервер, пожалуйста, попробуйте позже")))
                             else {
                                 val databaseTariff = tariffStorage.get(tariff.id)
-                                val location = locationsStorage.findById(0)
+                                val location = locationsStorage.findById(1)
+                                val databaseUser = userStorage.get(user.get.id)
                                 val server = GameServer()
                                 server.name = reqObj.vmName
                                 server.slug = serverSlug.toString
                                 server.tariff = databaseTariff
-                                server.owner = user.get
+                                server.owner = databaseUser
                                 server.uuid = respFuture.vmId
                                 server.kind = "minecraft"
                                 server.location = location.get
-                                gameServerStorage.add(server)
-                                Future.successful(Ok(jsonizer.serialize(new CreateServerResponse(respFuture.vmId, true, ""))))
+                                if (gameServerStorage.add(server))
+                                    Future.successful(Ok(jsonizer.serialize(new CreateServerResponse(respFuture.vmId, true, ""))))
+                                else
+                                    Future.successful(InternalServerError(serializeError(s"Не получилось сохранить сервер")))
                             }
                             
                         }
@@ -265,7 +270,18 @@ class ServerControlController @Inject()(
                 else {
                     val servers = publicServers.get.asScala.toList
                     Future.successful(Ok(jsonizer.serialize(
-                        GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports, s.isActiveServer)}
+                        GetServersList(servers map {s => ServerInfo(
+                            s.uuid,
+                            s.name,
+                            s.kind,
+                            s.ip,
+                            s.ports,
+                            ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
+                                controllerClientSettings.scheme,
+                                controllerClientSettings.host,
+                                s.ports.find(p => p.portKind.equals("controller")).get.port
+                            ))
+                        )}
                     ))))
                 }
             } else {
@@ -279,7 +295,18 @@ class ServerControlController @Inject()(
                     else{
                         val servers = userServers.get.asScala.toList
                         Future.successful(Ok(jsonizer.serialize(
-                            GetServersList(servers map {s => ServerInfo(s.uuid, s.name, s.kind, s.ip, s.ports, s.isActiveServer)}
+                            GetServersList(servers map {s => ServerInfo(
+                                s.uuid,
+                                s.name,
+                                s.kind,
+                                s.ip,
+                                s.ports,
+                                ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
+                                    controllerClientSettings.scheme,
+                                    controllerClientSettings.host,
+                                    s.ports.find(p => p.portKind.equals("controller")).get.port
+                                ))
+                            )}
                         ))))
                     }
                 }
