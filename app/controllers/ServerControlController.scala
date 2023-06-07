@@ -301,11 +301,13 @@ class ServerControlController @Inject()(
                                 s.kind,
                                 s.ip,
                                 s.ports,
-                                ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
-                                    controllerClientSettings.scheme,
-                                    controllerClientSettings.host,
-                                    s.ports.find(p => p.portKind.equals("controller")).get.port
-                                ))
+                                if (s.ports.find(p => p.portKind.equals("controller")).isDefined)
+                                    ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
+                                        controllerClientSettings.scheme,
+                                        controllerClientSettings.host,
+                                        s.ports.find(p => p.portKind.equals("controller")).get.port
+                                    ))
+                                else false
                             )}
                         ))))
                     }
