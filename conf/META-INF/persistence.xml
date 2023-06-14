@@ -18,6 +18,8 @@
         <class>business.entities.Tariff</class>
         <class>business.entities.UserSession</class>
         <class>business.entities.Location</class>
+        <class>business.entities.TariffSpecification</class>
+        <class>business.entities.TariffSpecificationPort</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />

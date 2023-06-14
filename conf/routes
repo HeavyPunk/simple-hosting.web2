@@ -28,6 +28,12 @@ POST /api/servers/controller/start-server controllers.GameServerControlControlle
 
 POST /api/servers/controller/stop-server controllers.GameServerControlController.stopServer()
 
+POST /api/servers/controller/get-server-info controllers.GameServerControlController.getServerInfo()
+
+POST /api/servers/controller/send-message controllers.GameServerControlController.sendServerMessage()
+
+POST /api/servers/controller/get-server-logs controllers.GameServerControlController.getServerLogs()
+
 POST /api/external/curseforge/files/by-mod-id/ controllers.CurseForgeProxyController.getModFilesByModId()
 POST /api/external/curseforge/files/by-file-id/ controllers.CurseForgeProxyController.getModFileByFileId()
 POST /api/external/curseforge/files/download-urls/ controllers.CurseForgeProxyController.getFileDownloadUrls()

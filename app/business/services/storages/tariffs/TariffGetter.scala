@@ -53,7 +53,7 @@ class StupidTariffProvider(
                 "default"
             ),
             50, //руб
-            false,
+            true,
             false,
             false
         ),

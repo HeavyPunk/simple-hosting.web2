@@ -162,10 +162,42 @@ case class Game() extends BaseEntity {
 case class Tariff() extends BaseEntity {
     @Column(name = "name") val name: String = ""
     @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY) val game: Game = null
-    @Column(name = "specification_id") val specificationId: Long = 0
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.EAGER)
+    val specification: TariffSpecification = null
     @Column(name = "description") val description: String = ""
     @Column(name = "s3_path") val path: String = null
 } 
+
+@Entity
+@Table(name = "tariff_specifications")
+case class TariffSpecification() extends BaseEntity {
+    @Column(name = "month_price") var monthPrice: Int = 0
+    @Column(name = "is_price_per_player") var isPricePerPlayer: Boolean = false
+    @Column(name = "is_memory_per_slot") var isMemoryPerSlot: Boolean = false
+    @Column(name = "is_cpu_per_slot") val isCpuPerSlot: Boolean = false
+    @Column(name = "min_slots") val minSlots: Int = 0
+    @Column(name = "max_slots") val maxSlots: Int = 0
+
+    @Column(name = "image_uri") var imageUri: String = null
+    @Column(name = "available_disk_bytes") var availableDiskBytes: Long = 0
+    @Column(name = "available_ram_bytes") var availableRamBytes: Long = 0
+    @Column(name = "available_swap_bytes") var availableSwapBytes: Long = 0
+    @Column(name = "available_cpu") var availableCpu: Long = 0
+
+
+    @OneToMany(mappedBy = "specification", cascade = Array(CascadeType.ALL), fetch = FetchType.EAGER)
+    var vmExposePorts: Array[TariffSpecificationPort] = Array.empty
+    @Column(name = "cpu_frequency") var cpuFrequency: Long = 0
+    @Column(name = "cpu_name") var cpuName: String = null
+}
+
+@Entity
+@Table(name = "tariff_specifications_ports")
+case class TariffSpecificationPort() extends BaseEntity {
+    @ManyToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.EAGER) var specification: TariffSpecification = null
+    @Column(name = "port") var port: String = null
+    @Column(name = "kind") var kind: String = null
+}
 
 @Entity
 @Table(name = "user_sessions")
