@@ -20,7 +20,6 @@ import components.clients.compositor.models.{
     PortDescription
 }
 import play.api.Logger
-import business.services.storages.tariffs.TariffGetter
 import business.services.storages.servers.GameServerStorage
 import business.entities.GameServer
 import business.services.storages.tariffs.TariffStorage
@@ -43,6 +42,9 @@ import scala.jdk.CollectionConverters._
 import java.util.UUID
 import business.services.storages.locations.LocationsStorage
 import business.services.storages.users.UserStorage
+import components.services.retrier.Retrier
+import org.postgresql.translation.messages_de
+import components.services.log.Log
 
 class ServerControlController @Inject()(
     val controllerComponents: ControllerComponents,
@@ -50,11 +52,11 @@ class ServerControlController @Inject()(
     val controllerClientFactory: ControllerClientFactory,
     val controllerClientSettings: Settings,
     val jsonizer: JsonService,
-    val tariffsGetter: TariffGetter,
     val tariffStorage: TariffStorage,
     val gameServerStorage: GameServerStorage,
     val locationsStorage: LocationsStorage,
     val userStorage: UserStorage,
+    val log: Log
 ) extends BaseController {
 
     def findUserForCurrentRequest(request: Request[AnyContent]): Option[User] = {
@@ -81,19 +83,19 @@ class ServerControlController @Inject()(
                     if (tariffId.isEmpty)
                         Future.successful(BadRequest(serializeError("Номер тарифа имеет неверный формат")))
                     else {
-                        val tariffOption = tariffsGetter.findTariffById(tariffId.get)
+                        val tariffOption = tariffStorage.findById(tariffId.get)
                         if (tariffOption.isEmpty)
                             Future.successful(BadRequest(serializeError(s"Тариф с номером ${tariffId.get} не найден")))
                         else {
                             val tariff = tariffOption.get
                             val serverSlug = UUID.randomUUID()
                             val respFuture = compositorClient.createServer(new io.github.heavypunk.compositor.client.models.CreateServerRequest(
-                                tariff.hadrware.imageUri,
+                                tariff.specification.imageUri,
                                 serverSlug.toString,
-                                tariff.hadrware.availableRamBytes,
-                                tariff.hadrware.availableDiskBytes,
-                                tariff.hadrware.availableSwapBytes,
-                                tariff.hadrware.vmExposePorts,
+                                tariff.specification.availableRamBytes,
+                                tariff.specification.availableDiskBytes,
+                                tariff.specification.availableSwapBytes,
+                                tariff.specification.vmExposePorts.map(_.port),
                             ), Duration.ofMinutes(2))
 
                             if (respFuture.vmId.equals(null) || respFuture.vmId.equals(""))
@@ -186,13 +188,20 @@ class ServerControlController @Inject()(
                 if (gameServer.isEmpty)
                     Future.successful(InternalServerError(serializeError(s"Сервер не найден: ${resp.vmId}")))
                 else {
-                    Thread.sleep(2000)
-                    val controllerPortOption = ControllerUtils.findControllerPort(
-                        resp.vmWhitePorts,
-                        controllerClientFactory,
-                        new Settings(controllerClientSettings.scheme, resp.vmWhiteIp, controllerClientSettings.port)
+                    
+                    val controllerPortOption = Retrier.work[Option[Int]](
+                        action = {
+                            ControllerUtils.findControllerPort(
+                                resp.vmWhitePorts,
+                                controllerClientFactory,
+                                new Settings(controllerClientSettings.scheme, resp.vmWhiteIp, controllerClientSettings.port)
+                            )
+                        },
+                        isSuccess = p => p.isDefined,
+                        delay = Duration.ofSeconds(2),
+                        onAttempt = a => log.info(s"Attempting to connect to controller of server ${gameServer.get.slug}, attempt $a")
                     )
-                    val controllerPort = if (controllerPortOption.isDefined) controllerPortOption.get else -1
+                    val controllerPort = if (controllerPortOption.isDefined) controllerPortOption.get.get else -1
                     val serializedControllerPort = GameServerPort()
                     serializedControllerPort.port = controllerPort
                     serializedControllerPort.portKind = "controller"
@@ -266,7 +275,7 @@ class ServerControlController @Inject()(
             val req = jsonizer.deserialize(request.body.asJson.get.toString, classOf[GetUserServersRequest])
             if (req.isPublic){
                 val publicServers = gameServerStorage.findPublicServers(req.kind) // TODO: pagination
-                if (publicServers.isEmpty) Future.successful(NotFound(jsonizer.serialize(GetServersList(Seq.empty))))
+                if (publicServers.isEmpty) Future.successful(Ok(jsonizer.serialize(GetServersList(Seq.empty))))
                 else {
                     val servers = publicServers.get.asScala.toList
                     Future.successful(Ok(jsonizer.serialize(
@@ -279,7 +288,7 @@ class ServerControlController @Inject()(
                             ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
                                 controllerClientSettings.scheme,
                                 controllerClientSettings.host,
-                                s.ports.find(p => p.portKind.equals("controller")).get.port
+                                s.ports.find(_.portKind.equals("controller")).get.port
                             ))
                         )}
                     ))))
@@ -301,11 +310,13 @@ class ServerControlController @Inject()(
                                 s.kind,
                                 s.ip,
                                 s.ports,
-                                ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
-                                    controllerClientSettings.scheme,
-                                    controllerClientSettings.host,
-                                    s.ports.find(p => p.portKind.equals("controller")).get.port
-                                ))
+                                if (s.ports.find(_.portKind.equals("controller")).isDefined)
+                                    ControllerUtils.checkForServerRunning(controllerClientFactory, new Settings(
+                                        controllerClientSettings.scheme,
+                                        controllerClientSettings.host,
+                                        s.ports.find(_.portKind.equals("controller")).get.port
+                                    ))
+                                else false
                             )}
                         ))))
                     }
