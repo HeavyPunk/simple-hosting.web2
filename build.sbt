@@ -7,14 +7,14 @@ version := "06.09.23.2"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-scalaVersion := "2.13.10"
+scalaVersion := "3.3.0"
 
 libraryDependencies += guice
 
 libraryDependencies += "javax.xml.bind" % "jaxb-api" % "2.3.1"
 
 libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
-libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "5.0.0" % Test
+libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "6.0.0-M6" % Test
 
 libraryDependencies += "org.apache.httpcomponents.client5" % "httpclient5"          % "5.2.1"
 libraryDependencies += "com.fasterxml.jackson.module"     %% "jackson-module-scala" % "2.14.1"
