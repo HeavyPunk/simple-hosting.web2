@@ -9,7 +9,7 @@ import components.basic.Monad
 import components.basic.ResultMonad
 import components.basic.ErrorMonad
 
-class GameNotFoundException extends Exception
+class GameNotFoundException
 
 class GamesStorage(em: EntityManager, logger: Log) extends BaseStorage[Game]:
     override val log: Log = logger
@@ -21,8 +21,8 @@ class GamesStorage(em: EntityManager, logger: Log) extends BaseStorage[Game]:
     def findGameById[TKey](id: TKey): Monad[Exception | GameNotFoundException, Game] = 
         val result = findById(id)
         result match
-            case r: ErrorMonad[Exception, Game] => r
-            case r: ResultMonad[Exception, Game] => if r.obj != null then r else ErrorMonad(GameNotFoundException())
+            case r: ErrorMonad[Exception, Game] => ErrorMonad(r.err)
+            case r: ResultMonad[Exception, Game] => if r.obj != null then ResultMonad(r.obj) else ErrorMonad(GameNotFoundException())
     
     def addGame(game: Game): Monad[Exception, Boolean] = add(game)
 

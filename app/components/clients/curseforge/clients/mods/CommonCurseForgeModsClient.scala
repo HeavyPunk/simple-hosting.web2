@@ -13,6 +13,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import javax.inject.Inject
+import components.basic.{ Monad, ErrorMonad, ResultMonad }
 
 class CommonCurseForgeModsClient @Inject() (
     val settings: CurseForgeClientSettings,
@@ -29,42 +30,54 @@ class CommonCurseForgeModsClient @Inject() (
     .setHost(settings.host)
     .setPathSegments("v1")
 
-  override def getMods(request: SearchModsRequest): SearchModsResponse = {
-    val query = request.toQueryString()
-    val uri = constructBaseUri()
-      .setCustomQuery(query)
-      .appendPathSegments(ApiPaths.mods, ApiPaths.search)
-      .build()
+  override def getMods(request: SearchModsRequest): Monad[Exception, SearchModsResponse] = {
+    try {
+      val query = request.toQueryString()
+      val uri = constructBaseUri()
+        .setCustomQuery(query)
+        .appendPathSegments(ApiPaths.mods, ApiPaths.search)
+        .build()
 
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[SearchModsResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[SearchModsResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getModById(id: Int): GetModResponse = {
-    val uri = constructBaseUri()
-      .appendPathSegments(ApiPaths.mods, id.toString())
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getModById(id: Int): Monad[Exception, GetModResponse] = {
+    try {
+      val uri = constructBaseUri()
+        .appendPathSegments(ApiPaths.mods, id.toString())
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetModResponse]);
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetModResponse]);
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getModFullDescription(id: Int): GetModFullDescriptionResponse = {
-    val uri = constructBaseUri()
-      .appendPathSegments(ApiPaths.mods, id.toString(), ApiPaths.description)
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getModFullDescription(id: Int): Monad[Exception, GetModFullDescriptionResponse] = {
+    try {
+      val uri = constructBaseUri()
+        .appendPathSegments(ApiPaths.mods, id.toString(), ApiPaths.description)
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetModFullDescriptionResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetModFullDescriptionResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 }

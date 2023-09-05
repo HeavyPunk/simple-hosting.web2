@@ -10,7 +10,7 @@ import components.basic.Monad
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
 
-class GameServerNotFoundException extends Exception
+class GameServerNotFoundException
 
 class GameServerStorage(
     val em: EntityManager,
@@ -32,8 +32,8 @@ class GameServerStorage(
     def findGameServerById[TKey](id: TKey): Monad[Exception | GameServerNotFoundException, GameServer] = 
         val result = findById(id)
         result match
-            case r: ErrorMonad[Exception, GameServer] => r
-            case r: ResultMonad[Exception, GameServer] => if r.obj != null then r else ErrorMonad(GameServerNotFoundException())
+            case r: ErrorMonad[Exception, GameServer] => ErrorMonad(r.err)
+            case r: ResultMonad[Exception, GameServer] => if r.obj != null then ResultMonad(r.obj) else ErrorMonad(GameServerNotFoundException())
 
     def findPublicServers(kind: String): Monad[Exception, List[GameServer]] =
         query(

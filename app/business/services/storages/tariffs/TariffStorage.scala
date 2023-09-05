@@ -8,7 +8,7 @@ import components.basic.Monad
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
 
-class TariffNotFoundException extends Exception
+class TariffNotFoundException
 
 class TariffStorage (
     val em: EntityManager,
@@ -20,5 +20,5 @@ class TariffStorage (
     def findTariffById[TKey](id: TKey): Monad[Exception | TariffNotFoundException, Tariff] = 
         val result = findById(id)
         result match
-            case r: ErrorMonad[Exception, Tariff] => r
-            case r: ResultMonad[Exception, Tariff] => if r.obj != null then r else ErrorMonad(TariffNotFoundException())
+            case r: ErrorMonad[Exception, Tariff] => ErrorMonad(r.err)
+            case r: ResultMonad[Exception, Tariff] => if r.obj != null then ResultMonad(r.obj) else ErrorMonad(TariffNotFoundException())

@@ -12,10 +12,10 @@ import components.basic.ResultMonad
 abstract class BaseStorage[T: ClassTag]:
     val entityManager: EntityManager
     val log: Log
-    protected def add(item: T): Monad[Exception, Boolean] = addInternal(item)
+    def add(item: T): Monad[Exception, Boolean] = addInternal(item)
     protected def findById[TKey](id: TKey): Monad[Exception, T] = findByIdInternal(id)
-    protected def update(item: T): Monad[Exception, Boolean] = updateInternal(item)
-    protected def remove(item: T): Monad[Exception, Boolean] = removeInternal(item)
+    def update(item: T): Monad[Exception, Boolean] = updateInternal(item)
+    def remove(item: T): Monad[Exception, Boolean] = removeInternal(item)
     protected def query(query: String, params: (String, Object)*): Monad[Exception, List[T]] = queryInternal(query, params)
 
     private def queryInternal(query: String, params: Seq[(String, Object)]): Monad[Exception, List[T]] =

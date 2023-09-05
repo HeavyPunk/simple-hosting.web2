@@ -27,7 +27,7 @@ class SessionStorageTests extends munit.FunSuite {
     }
 
     test("Get by id") {
-        val session = sessionStorage.findById(0)
-        assert(session.isDefined)
+        val session = sessionStorage.findSessionById(0)
+        assert(session.tryGetValue._2 != null)
     }
 }

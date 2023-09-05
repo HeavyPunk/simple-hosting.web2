@@ -13,7 +13,7 @@ import components.basic.Monad
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
 
-class UserNotFoundException extends Exception
+class UserNotFoundException
 
 class UserStorage @Inject()(
     em: EntityManager,

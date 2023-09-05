@@ -9,7 +9,7 @@ import components.basic.Monad
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
 
-class LocationNotFoundException extends Exception
+class LocationNotFoundException
 
 class LocationsStorage(em: EntityManager, logger: Log) extends BaseStorage[Location]:
     override val entityManager: EntityManager = em
@@ -20,5 +20,5 @@ class LocationsStorage(em: EntityManager, logger: Log) extends BaseStorage[Locat
     def findLocationById[TKey](id: TKey): Monad[Exception | LocationNotFoundException, Location] = 
         val result = findById(id)
         result match
-            case r: ErrorMonad[Exception, Location] => r
-            case r: ResultMonad[Exception, Location] => if r.obj != null then r else ErrorMonad(LocationNotFoundException())
+            case r: ErrorMonad[Exception, Location] => ErrorMonad(r.err)
+            case r: ResultMonad[Exception, Location] => if r.obj != null then ResultMonad(r.obj) else ErrorMonad(LocationNotFoundException())

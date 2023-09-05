@@ -10,12 +10,20 @@ import business.entities.User
 import components.basic.UserTypedKey
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
+import play.api.mvc.BaseController
+import components.services.serializer.JsonService
+import scala.reflect.ClassTag
+import scala.concurrent.Future
+import components.basic.MessageResponse
 
-class UserNotFoundForRequest extends Exception
-class RequestBodyNotFound extends Exception
-class JsonNotFoundForRequestBody extends Exception
+class UserNotFoundForRequest
+class RequestBodyNotFound 
+class JsonNotFoundForRequestBody
+class JsonCannotBeParsed
 
-class SimpleHostingController:
+abstract class SimpleHostingController(jsonizer: JsonService) extends BaseController:
+    def serializeError(error: String, success: Boolean = false) = jsonizer.serialize(MessageResponse(error, success))
+
     def findUserForCurrentRequest(request: Request[AnyContent]): Monad[UserNotFoundForRequest, User] =
         val user = request.attrs.get(UserTypedKey.key)
         user match
@@ -28,3 +36,16 @@ class SimpleHostingController:
         request.body.asJson
             .mapToMonad(JsonNotFoundForRequestBody())
             .flatMap(js => ResultMonad(js.toString))
+    
+    def getModelFromJsonRequest[TModel: ClassTag](request: Request[AnyContent]): Monad[RequestBodyNotFound | JsonNotFoundForRequestBody | JsonCannotBeParsed, TModel] =
+        getJsonFromRequest(request)
+            .flatMap(json => {
+                val t = implicitly[ClassTag[TModel]].runtimeClass
+                val obj = jsonizer.deserialize(json, t).asInstanceOf[TModel]
+                obj match
+                    case null => ErrorMonad(JsonCannotBeParsed())
+                    case _: TModel => ResultMonad(obj)
+            })
+    
+    def wrapToFuture[T](obj: T): Future[T] =
+        Future.successful(obj)
