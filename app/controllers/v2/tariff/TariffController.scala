@@ -21,7 +21,7 @@ class TariffController @Inject() (
     val locationStorage: LocationsStorage,
     val jsonizer: JsonService
 ) extends SimpleHostingController(jsonizer):
-    def getTariffForGame(gameId: Long) = Action.async { implicit request => {
+    def getTariffsForGame(gameId: Long) = Action.async { implicit request => {
         val game = gamesStorage.findGameById(gameId)
         val locations = locationStorage.getAll
         val result = game.zipWith(locations)

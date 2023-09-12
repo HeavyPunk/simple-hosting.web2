@@ -11,9 +11,22 @@ POST /api/v2/external/curseforge/files/by-file-id/ controllers.v2.external.Curse
 POST /api/v2/external/curseforge/files/download-urls/ controllers.v2.external.CurseForgeProxyControllerV2.getFileDownloadUrls()
 
 POST /api/v2/account/register controllers.v2.account.LoginControllerV2.register()
-
 POST /api/v2/account/login controllers.v2.account.LoginControllerV2.login()
-
 POST /api/v2/account/logout controllers.v2.account.LoginControllerV2.logout()
-
 GET /api/v2/account/me controllers.v2.account.LoginControllerV2.me()
+
+GET /api/v2/tariff/get-for-game/:id controllers.v2.tariff.TariffController.getTariffsForGame(id: Long)
+GET /api/v2/tariff/get-all-games controllers.v2.tariff.TariffController.getAllGamesTariffs()
+
+POST /api/v2/servers/compositor/create-server controllers.v2.servers.GameServerControlControllerV2.createVm()
+POST /api/v2/servers/compositor/stop-server controllers.v2.servers.GameServerControlControllerV2.stopVm()
+POST /api/v2/servers/compositor/start-server controllers.v2.servers.GameServerControlControllerV2.startVm()
+POST /api/v2/servers/compositor/remove-server controllers.v2.servers.GameServerControlControllerV2.removeVm()
+POST /api/v2/servers/compositor/get-server controllers.v2.servers.GameServerControlControllerV2.getUserServers()
+POST /api/v2/servers/compositor/get-server/:hash controllers.v2.servers.GameServerControlControllerV2.getUserServerByHash(hash)
+POST /api/v2/servers/compositor/update-server controllers.v2.servers.GameServerControlControllerV2.updateVm()
+POST /api/v2/servers/controller/start-server controllers.v2.servers.GameServerControlControllerV2.startGameServer()
+POST /api/v2/servers/controller/stop-server controllers.v2.servers.GameServerControlControllerV2.stopGameServer()
+POST /api/v2/servers/controller/get-server-info controllers.v2.servers.GameServerControlControllerV2.getServerInfo()
+POST /api/v2/servers/controller/send-message controllers.v2.servers.GameServerControlControllerV2.sendServerMessage()
+POST /api/v2/servers/controller/get-server-logs controllers.v2.servers.GameServerControlControllerV2.getServerLogs()
