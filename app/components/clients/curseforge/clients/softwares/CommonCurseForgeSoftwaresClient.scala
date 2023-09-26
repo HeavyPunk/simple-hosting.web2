@@ -17,6 +17,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import javax.inject.Inject
 import scala.collection.mutable
+import components.basic.{ Monad, ErrorMonad, ResultMonad }
 
 class CommonCurseForgeSoftwaresClient @Inject() (
     val settings: CurseForgeClientSettings,
@@ -33,57 +34,65 @@ class CommonCurseForgeSoftwaresClient @Inject() (
     .setHost(settings.host)
     .setPathSegments("v1")
 
-  override def getMinecraftVersions(request: GetMinecraftVersionsRequest): GetMinecraftVersionsResponse = {
-    val query = request.toQueryString()
-    val uri = constructBaseUri()
-      .setCustomQuery(query)
-      .appendPathSegments(ApiPaths.minecraft, ApiPaths.versions)
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getMinecraftVersions(request: GetMinecraftVersionsRequest): Monad[Exception, GetMinecraftVersionsResponse] = {
+    try {
+      val query = request.toQueryString()
+      val uri = constructBaseUri()
+        .setCustomQuery(query)
+        .appendPathSegments(ApiPaths.minecraft, ApiPaths.versions)
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetMinecraftVersionsResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetMinecraftVersionsResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getMinecraftModloaders(request: GetMinecraftModloadersRequest): GetMinecraftModloadersResponse = {
-    val query = request.toQueryString()
-    val uri = constructBaseUri()
-      .setCustomQuery(query)
-      .appendPathSegments(ApiPaths.minecraft, ApiPaths.modloaders)
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getMinecraftModloaders(request: GetMinecraftModloadersRequest): Monad[Exception, GetMinecraftModloadersResponse] = {
+    try {
+      val query = request.toQueryString()
+      val uri = constructBaseUri()
+        .setCustomQuery(query)
+        .appendPathSegments(ApiPaths.minecraft, ApiPaths.modloaders)
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val modloaders    = jsonizer.deserialize(response.body(), classOf[ModloadersResponse])
-    val modloadersMap = collection.mutable.Map[String, ModloaderVersion]()
+      val modloaders    = jsonizer.deserialize(response.body(), classOf[ModloadersResponse])
+      val modloadersMap = collection.mutable.Map[String, ModloaderVersion]()
 
-    for (elem <- modloaders.data) {
-      val elemNewName = elem.name.split("-")(1)
+      for (elem <- modloaders.data) {
+        val elemNewName = elem.name.split("-")(1)
 
-      if (elem.latest == true || elem.recommended == true) {
-        val mapElem = modloadersMap.getOrElse(elem.gameVersion, null)
-        if (mapElem == null) {
-          modloadersMap(elem.gameVersion) = new ModloaderVersion(
-            elem.gameVersion,
-            Array(new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest))
-          )
-        } else if (mapElem.versions.length == 1) {
-          val modloaderVersions = mapElem.versions
-          modloadersMap(elem.gameVersion) = new ModloaderVersion(
-            elem.gameVersion,
-            modloaderVersions.appended(
-              new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest)
+        if (elem.latest == true || elem.recommended == true) {
+          val mapElem = modloadersMap.getOrElse(elem.gameVersion, null)
+          if (mapElem == null) {
+            modloadersMap(elem.gameVersion) = new ModloaderVersion(
+              elem.gameVersion,
+              Array(new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest))
             )
-          )
+          } else if (mapElem.versions.length == 1) {
+            val modloaderVersions = mapElem.versions
+            modloadersMap(elem.gameVersion) = new ModloaderVersion(
+              elem.gameVersion,
+              modloaderVersions.appended(
+                new Modloader(elem.gameVersion, elem.name, elemNewName, elem.recommended, elem.latest)
+              )
+            )
+          }
         }
       }
-    }
 
-    val formattedModloaders                 = modloadersMap.values.toArray.sortBy(_.gameVersion).reverse
-    val res: GetMinecraftModloadersResponse = new GetMinecraftModloadersResponse(formattedModloaders)
-    res
+      val formattedModloaders                 = modloadersMap.values.toArray.sortBy(_.gameVersion).reverse
+      val res: GetMinecraftModloadersResponse = new GetMinecraftModloadersResponse(formattedModloaders)
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 }

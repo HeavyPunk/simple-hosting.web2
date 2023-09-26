@@ -13,6 +13,12 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import javax.inject.Inject
+import components.basic.{ Monad, ErrorMonad, ResultMonad, mapToMonad, zipWith }
+import scala.collection.mutable
+import scala.util.boundary, boundary.break
+
+class CategoryNotFound
+class CategoriesNotFound
 
 class CommonCurseForgeCategoriesClient @Inject() (
     val settings: CurseForgeClientSettings,
@@ -29,35 +35,46 @@ class CommonCurseForgeCategoriesClient @Inject() (
     .setHost(settings.host)
     .setPathSegments("v1")
 
-  override def getCategories(request: GetCategoriesRequest): GetCategoriesResponse = {
-    val query = request.toQueryString()
-    val uri = constructBaseUri()
-      .setCustomQuery(query)
-      .appendPathSegments(ApiPaths.categories)
-      .build()
-    val req      = baseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getCategories(request: GetCategoriesRequest): Monad[Exception, GetCategoriesResponse] = {
+    try {
+      val query = request.toQueryString()
+      val uri = constructBaseUri()
+        .setCustomQuery(query)
+        .appendPathSegments(ApiPaths.categories)
+        .build()
+      val req      = baseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetCategoriesResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetCategoriesResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getCategoriesGroupedByClass(): GetCategoriesGroupedByClassResponse = {
-    val categories    = this.getCategories(new GetCategoriesRequest(432, null, null))
-    val categoriesMap = collection.mutable.Map[String, GroupedCategory]()
-    val classIds      = List[Int](5, 6, 12, 17, 4471).toArray
-
+  override def getCategoriesGroupedByClass(): Monad[Exception, GetCategoriesGroupedByClassResponse] = boundary {
+    val classIds = Array(5, 6, 12, 17, 4471)
+    val categories = getCategories(new GetCategoriesRequest(432, null, null))
+    val categoriesMap = mutable.Map[String, GroupedCategory]()
     for (classId <- classIds) {
-      val mainClass       = categories.data.find(c => c.id == classId).get
-      val classCategories = categories.data.filter(c => c.classId == classId && c.classId == c.parentCategoryId)
-
-      categoriesMap(classId.toString) =
-        new GroupedCategory(mainClass.id, mainClass.name, classCategories.sortBy(_.name.toLowerCase))
+      val mainClass = categories
+        .flatMap(cats => cats.data.find(c => c.id == classId).mapToMonad(CategoryNotFound()))
+      val classCategories = categories
+        .flatMap(cats => cats.data.filter(c => c.classId == classId && c.classId == c.parentCategoryId).mapToMonad(CategoriesNotFound()))
+      val executionResult = mainClass.zipWith(classCategories)
+        .flatMap((mc, cc) => {
+          categoriesMap(classId.toString) = GroupedCategory(mc.id, mc.name, cc.sortBy(_.name.toLowerCase))
+          ResultMonad(true)
+        })
+      val error = executionResult.tryGetValue._1
+      if (error != null){
+        break(error match
+          case _: CategoryNotFound => ResultMonad[Exception,GetCategoriesGroupedByClassResponse](GetCategoriesGroupedByClassResponse(Array()))
+          case _: CategoriesNotFound => ResultMonad[Exception,GetCategoriesGroupedByClassResponse](GetCategoriesGroupedByClassResponse(Array()))
+          case e: Exception => ErrorMonad[Exception,GetCategoriesGroupedByClassResponse](e))
+      }
     }
-
-    val formattedCategories = categoriesMap.values.toArray
-    val res                 = new GetCategoriesGroupedByClassResponse(formattedCategories)
-    res
+    return ResultMonad(GetCategoriesGroupedByClassResponse(categoriesMap.values.toArray))
   }
 }

@@ -21,7 +21,7 @@ case class CreateServerResponse (
 )
 
 
-case class StartServerRequest (
+case class StartVmRequest (
     val gameServerHash: String,
 )
 

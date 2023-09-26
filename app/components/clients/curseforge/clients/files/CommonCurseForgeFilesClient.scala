@@ -15,6 +15,10 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse.BodyHandlers
 import javax.inject.Inject
 import scala.collection.mutable.ListBuffer
+import components.basic.{ Monad, ErrorMonad, ResultMonad }
+import components.clients.curseforge.models.File
+
+class ServerPackFileIdNotFound extends Exception
 
 class CommonCurseForgeFilesClient @Inject() (
     val settings: CurseForgeClientSettings,
@@ -31,53 +35,60 @@ class CommonCurseForgeFilesClient @Inject() (
     .setHost(settings.host)
     .setPathSegments("v1")
 
-  override def getModFilesByModId(request: GetModFilesByModIdRequest): GetModFilesByModIdResponse = {
-    val modId = request.modId
-    val uri = constructBaseUri()
-      .setCustomQuery(request.toQueryString())
-      .appendPathSegments(ApiPaths.mods, modId.toString, ApiPaths.files)
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getModFilesByModId(request: GetModFilesByModIdRequest): Monad[Exception, GetModFilesByModIdResponse] = {
+    try {
+      val modId = request.modId
+      val uri = constructBaseUri()
+        .setCustomQuery(request.toQueryString())
+        .appendPathSegments(ApiPaths.mods, modId.toString, ApiPaths.files)
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetModFilesByModIdResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetModFilesByModIdResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getModFileByFileId(request: GetModFileByFileIdRequest): GetModFileByFileIdResponse = {
-    val modId  = request.modId
-    val fileId = request.fileId
-    val uri = constructBaseUri()
-      .appendPathSegments(ApiPaths.mods, modId.toString, ApiPaths.files, fileId.toString)
-      .build()
-    val req      = contructBaseRequest.GET().uri(uri).build()
-    val client   = HttpClient.newHttpClient()
-    val response = client.send(req, BodyHandlers.ofString())
+  override def getModFileByFileId(request: GetModFileByFileIdRequest): Monad[Exception, GetModFileByFileIdResponse] = {
+    try {
+      val modId  = request.modId
+      val fileId = request.fileId
+      val uri = constructBaseUri()
+        .appendPathSegments(ApiPaths.mods, modId.toString, ApiPaths.files, fileId.toString)
+        .build()
+      val req      = contructBaseRequest.GET().uri(uri).build()
+      val client   = HttpClient.newHttpClient()
+      val response = client.send(req, BodyHandlers.ofString())
 
-    val res = jsonizer.deserialize(response.body(), classOf[GetModFileByFileIdResponse])
-    res
+      val res = jsonizer.deserialize(response.body(), classOf[GetModFileByFileIdResponse])
+      ResultMonad(res)
+    } catch {
+      case e: Exception => ErrorMonad(e)
+    }
   }
 
-  override def getFileDownloadUrls(request: GetModFilesByModIdRequest): GetFileDownloadUrlsResponse = {
+  override def getFileDownloadUrls(request: GetModFilesByModIdRequest): Monad[Exception, GetFileDownloadUrlsResponse] = {
     val modId = request.modId
     val files = this.getModFilesByModId(request)
 
-    if (files.data.length == 0)
-      return new GetFileDownloadUrlsResponse(new Array(0))
+    val latestFile = files.flatMap(f => ResultMonad(f.data(0)))
+    val result = latestFile.flatMap(f => 
+      if (f.serverPackFileId.isDefined) 
+        getModFileByFileId(new GetModFileByFileIdRequest(modId, f.serverPackFileId.get))
+      else 
+        ErrorMonad(ServerPackFileIdNotFound())
+    )
+    val (err, urls) = result.tryGetValue
 
-    val urls       = ListBuffer[String]()
-    val latestFile = files.data(0)
-
-    if (latestFile.serverPackFileId.isDefined) {
-      val serverPackFileId = latestFile.serverPackFileId.get
-      val serverFile       = this.getModFileByFileId(new GetModFileByFileIdRequest(modId, serverPackFileId)).data
-      urls += serverFile.downloadUrl
-    } else {
-      urls += latestFile.downloadUrl
-    }
-
-    val res = new GetFileDownloadUrlsResponse(urls.toArray)
-    res
+    if (err == null)
+      return ResultMonad(GetFileDownloadUrlsResponse(Array(urls.data.downloadUrl)))
+    else
+      err match
+        case _: ServerPackFileIdNotFound => ResultMonad(GetFileDownloadUrlsResponse(Array(latestFile.tryGetValue._2.downloadUrl)))
+        case e: Exception => ErrorMonad(e)
   }
 }

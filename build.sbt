@@ -3,7 +3,7 @@ maintainer := "simple-hosting@simplehosting.org"
 name         := """simple-hosting.web2"""
 organization := "com.simplehosting"
 
-version := "06.09.23.2"
+version := "12.09.23.2"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 

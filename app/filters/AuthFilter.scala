@@ -30,17 +30,13 @@ class AuthFilter @Inject()(
         val token = rh.headers.get(authHeader)
         if (token.isEmpty)
             return nextFilter(rh)
-        val session = sessionStorage.findByToken(token.get)
-        if (session.isEmpty) {
-            log.warn(s"No found any session for ${token.get}")
-            return nextFilter(rh)
-        }
-        val user = usersStorage.findBySession(session.get)
-        if (user.isEmpty) {
-            log.warn(s"No found any user for session ${token.get}")
-            return nextFilter(rh)
-        }
+        val result = sessionStorage
+            .findByToken(token.get)
+            .flatMap(s => usersStorage.findBySession(s))
         
-        nextFilter(rh.addAttr(UserTypedKey.key, user.get))
+        val (err, user) = result.tryGetValue
+        if (err != null)
+            nextFilter(rh)
+        else nextFilter(rh.addAttr(UserTypedKey.key, user))
     }
 }

@@ -23,6 +23,7 @@ import io.github.heavypunk.controller.client.CommonControllerClient
 import components.clients.controller.ControllerClientFactory
 import play.api.Configuration
 import play.api.Environment
+import components.clients.compositor.CompositorClientWrapper
 
 class ClientsModule(
   environment: Environment,
@@ -46,6 +47,9 @@ class ClientsModule(
     val compositorClientSettings = ClientSettings(new URI(compositorUri), compositorApikey)
     val compositorClient = new CommonCompositorClient(compositorClientSettings)
     bind(classOf[CompositorClient]).toInstance(compositorClient)
+
+    val compositorClientWrapper = CompositorClientWrapper(compositorClient)
+    bind(classOf[CompositorClientWrapper]).toInstance(compositorClientWrapper)
 
     //-----------------------------
     val controllerClientScheme = configuration.get[String]("app.clients.controller.scheme")
