@@ -4,8 +4,6 @@ import com.google.inject.AbstractModule
 import jakarta.persistence.Persistence
 import business.services.storages.session.SessionStorage
 import business.services.storages.users.UserStorage
-import business.services.storages.tariffs.StupidTariffProvider
-import business.services.storages.tariffs.TariffGetter
 import business.services.storages.servers.GameServerStorage
 import business.services.storages.hosts.HostStorage
 import business.services.storages.tariffs.TariffStorage
@@ -24,7 +22,6 @@ class StoragesModule extends AbstractModule {
 
         val userStorage = new UserStorage(relationEntityManager, log.forContext("UserStorage"))
         val sessionStorage = new SessionStorage(relationEntityManager, log.forContext("SessionStorage"))
-        val tariffsStorage = new StupidTariffProvider(relationEntityManager, log.forContext("StupidTariffProvider"))
         val gameServerStorage = new GameServerStorage(relationEntityManager, log.forContext("GameServerStorage"))
         val hostStorage = new HostStorage(relationEntityManager, log.forContext("HostStorage"))
         val tariffStorage = new TariffStorage(relationEntityManager, log.forContext("TariffStorage"))
@@ -33,7 +30,6 @@ class StoragesModule extends AbstractModule {
 
         bind(classOf[SessionStorage]).toInstance(sessionStorage)
         bind(classOf[UserStorage]).toInstance(userStorage)
-        bind(classOf[TariffGetter]).toInstance(tariffsStorage)
         bind(classOf[TariffStorage]).toInstance(tariffStorage)
         bind(classOf[GameServerStorage]).toInstance(gameServerStorage)
         bind(classOf[GamesStorage]).toInstance(gamesStorage)

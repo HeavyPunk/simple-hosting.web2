@@ -3,6 +3,34 @@ package components.clients.compositor.models
 import com.fasterxml.jackson.annotation.JsonProperty
 import business.entities.GameServerPort
 
+case class StopVmWithGameServerRequest (
+    val gameServerHash: String,
+    val force: Boolean,
+)
+case class StopVmWithGameServerResponse (
+    val success: Boolean,
+    val error: String
+)
+
+case class CreateVmWithGameServerRequest(
+    @JsonProperty("name") val vmName: String,
+    val gameId: Long,
+    val locationId: Long,
+    val tariffId: String,
+    val period: Long,
+    val isTestPeriod: Boolean,
+    val promoCode: String,
+    val slots: Int,
+    val saveStdout: Boolean,
+    val saveStderr: Boolean
+)
+
+case class CreateVmWithGameServerResponse(
+    val gameServerHash: String,
+    val success: Boolean,
+    val error: String
+)
+
 case class CreateServerRequest (
     @JsonProperty("name") val vmName: String,
     val gameId: Long,
@@ -21,7 +49,7 @@ case class CreateServerResponse (
 )
 
 
-case class StartServerRequest (
+case class StartVmRequest (
     val gameServerHash: String,
 )
 

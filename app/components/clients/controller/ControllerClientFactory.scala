@@ -4,7 +4,7 @@ import io.github.heavypunk.controller.client.Settings
 import io.github.heavypunk.controller.client.ControllerClient
 import io.github.heavypunk.controller.client.CommonControllerClient
 import io.github.heavypunk.controller.client.server.CommonControllerServerClient
-import io.github.heavypunk.controller.state.CommonControllerStateClient
+import io.github.heavypunk.controller.client.state.CommonControllerStateClient
 
 class ControllerClientFactory {
     def getControllerClient(controllerClientSettings: Settings): ControllerClient = 
