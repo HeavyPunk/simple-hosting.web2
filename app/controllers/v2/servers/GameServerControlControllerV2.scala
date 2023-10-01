@@ -301,11 +301,11 @@ class GameServerControlControllerV2 @Inject() (
         else wrapToFuture(Ok)
     }}
 
-    def getUserServers() = Action.async { implicit request => {
+    def getUserServers(isPublic: String) = Action.async { implicit request => {
         val req = getModelFromJsonRequest[GetUserServersRequest](request)
         val user = findUserForCurrentRequest(request)
         val result = req.zipWith(user).flatMap((r, u) => {
-            if(r.isPublic)
+            if(isPublic.toBoolean)
                 gameServerStorage.findPublicServers(r.kind)
             else gameServerStorage.findServersByOwner(u)
         })
