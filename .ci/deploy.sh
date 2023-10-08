@@ -20,6 +20,12 @@ chmod 600 $MACHINE_PRIVATE_SSH_KEY
 
 echo "[DEPLOY] Prepare completed"
 
+#Build
+
+echo "[BUILD] Building..."
+bash publish-prod.sh
+echo "[BUILD] Build completed"
+
 #Package
 
 echo "[DEPLOY] Package starting..."
