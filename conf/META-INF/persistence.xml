@@ -20,6 +20,7 @@
         <class>business.entities.Location</class>
         <class>business.entities.TariffSpecification</class>
         <class>business.entities.TariffSpecificationPort</class>
+        <class>business.entities.OAuthUser</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />

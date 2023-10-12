@@ -11,19 +11,22 @@ import jakarta.persistence.{
     TemporalType,
     PrePersist,
     PreUpdate,
-    MappedSuperclass
+    MappedSuperclass,
+    OneToOne,
+    OneToMany,
+    ManyToOne,
+    JoinColumn,
+    CascadeType,
+    FetchType,
+    SequenceGenerator
 }
 import org.hibernate.annotations.{ GenericGenerator }
-import java.util.Date
+import java.util.{
+    Date,
+    UUID,
+}
 import java.time.Instant
-import java.util.UUID
-import jakarta.persistence.OneToOne
-import jakarta.persistence.OneToMany
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.CascadeType
-import jakarta.persistence.FetchType
-import jakarta.persistence.SequenceGenerator
+import business.services.oauth2.OAuth2System
 
 @MappedSuperclass
 class BaseEntity{
@@ -58,7 +61,22 @@ case class User () extends BaseEntity {
     @Column(name = "avatar_url", nullable = true) var avatarUrl: String = ""
     @Column(name = "is_test_period_available") var isTestPeriodAvailable: Boolean = false
 
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
+    @JoinColumn(name = "oauth_user") var oauthUser: OAuthUser = null
+
     override def equals(other: Any): Boolean = other.isInstanceOf[User] && other.asInstanceOf[User].login.equals(this.login)
+}
+
+@Entity
+@Table(name = "oauth_users")
+case class OAuthUser() extends BaseEntity {
+    @Column(name = "oauth_system") var oauthSystem: OAuth2System = OAuth2System.None
+    @Column(name = "oauth_key") var oauthKey: String = ""
+    @Column(name = "oauth_code") var oauthCode: String = ""
+    @Column(name = "oauth_token") var oauthToken: String = ""
+
+    @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
+    @JoinColumn(name = "user") var user: User = null
 }
 
 @Entity

@@ -2,6 +2,11 @@ package components.services.business
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import business.entities.User
+import business.services.oauth2.OAuth2System
+
+case class AuthorizeOAuth2 (
+    val system: OAuth2System
+)
 
 case class RegisterUserRequest (
     val login: String,
