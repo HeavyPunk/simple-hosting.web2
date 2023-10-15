@@ -34,10 +34,13 @@ import business.services.storages.session.SessionNotFoundError
 import components.services.log.Log
 import business.services.storages.users.UserNotFoundException
 import components.services.business.LoginUserRequest
+import business.services.storages.groups.GroupsStorage
+import business.services.storages.groups.GroupNotFound
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
     val userStorage: UserStorage,
+    val groupsStorage: GroupsStorage,
     val sessionStorage: SessionStorage,
     val jsonizer: JsonService,
     val log: Log
@@ -62,13 +65,16 @@ class LoginControllerV2 @Inject() (
         if (emailIsExist.tryGetValue._2 != null || loginIsExist.tryGetValue._2 != null) {
             wrapToFuture(BadRequest("This login or email is already in use"))
         } else {
+            val globalGroup = groupsStorage.findByName("global")
             val user = model
-                .flatMap(m => {
+                .zipWith(globalGroup)
+                .flatMap((m, globalGroup) => {
                     var u = User()
                     u.email = m.email
                     u.login = m.login
                     u.passwdHash = PasswordHasher.hash(m.password)
                     u.isTestPeriodAvailable = true
+                    u.groups = Array(globalGroup)
                     ResultMonad(u)
                 })
 
@@ -101,6 +107,7 @@ class LoginControllerV2 @Inject() (
                     case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
                     case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
                     case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
+                    case e: GroupNotFound => wrapToFuture(InternalServerError(s"Group [${e.name}] not found"))
                     case _: Exception => wrapToFuture(InternalServerError("Server error"))
             else
                 wrapToFuture(Created(response))

@@ -29,8 +29,8 @@ class UserStorage @Inject()(
             ("login" -> login),
         )
         result match
-            case r: ErrorMonad[Exception, List[User]] => ErrorMonad(r.err)
-            case r: ResultMonad[Exception, List[User]] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))
+            case r: ErrorMonad[?, ?] => ErrorMonad(r.err)
+            case r: ResultMonad[?, ?] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))
 
     def findBySession[TId](session: UserSession): Monad[Exception | UserNotFoundException, User] =
         val result = query(
@@ -38,8 +38,8 @@ class UserStorage @Inject()(
             ("session" -> session),
         )
         result match
-            case r: ErrorMonad[Exception, List[User]] => ErrorMonad(r.err)
-            case r: ResultMonad[Exception, List[User]] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))
+            case r: ErrorMonad[?, ?] => ErrorMonad(r.err)
+            case r: ResultMonad[?, ?] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))
 
     def findByEmail(email: String): Monad[Exception | UserNotFoundException, User] =
         val result = query(
@@ -47,5 +47,5 @@ class UserStorage @Inject()(
             ("email" -> email)
         )
         result match
-            case r: ErrorMonad[Exception, List[User]] => ErrorMonad(r.err)
-            case r: ResultMonad[Exception, List[User]] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))
+            case r: ErrorMonad[?, ?] => ErrorMonad(r.err)
+            case r: ResultMonad[?, ?] => if r.obj.length == 0 then ErrorMonad(UserNotFoundException()) else ResultMonad(r.obj(0))

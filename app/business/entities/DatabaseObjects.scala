@@ -24,6 +24,8 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.CascadeType
 import jakarta.persistence.FetchType
 import jakarta.persistence.SequenceGenerator
+import jakarta.persistence.ManyToMany
+import jakarta.persistence.JoinTable
 
 @MappedSuperclass
 class BaseEntity{
@@ -57,6 +59,10 @@ case class User () extends BaseEntity {
     @Column(name = "is_admin") var isAdmin: Boolean = false
     @Column(name = "avatar_url", nullable = true) var avatarUrl: String = ""
     @Column(name = "is_test_period_available") var isTestPeriodAvailable: Boolean = false
+
+    @ManyToMany(cascade = Array(CascadeType.ALL))
+    @JoinTable(name = "group_user_relations")
+    var groups: Array[UserGroup] = null
 
     override def equals(other: Any): Boolean = other.isInstanceOf[User] && other.asInstanceOf[User].login.equals(this.login)
 }
@@ -206,4 +212,30 @@ case class UserSession() extends BaseEntity {
     @Column(name = "data") var data: String = null
 
     override def equals(other: Any): Boolean = other.isInstanceOf[UserSession] && other.asInstanceOf[UserSession].token.equals(this.token)
+}
+
+@Entity
+@Table(name = "users_groups")
+case class UserGroup() extends BaseEntity {
+    @ManyToMany(cascade = Array(CascadeType.ALL))
+    @JoinTable(name = "group_user_relations")
+    var bindedUsers: Array[User] = null
+    
+    @Column(name = "customizable") var customizable: Boolean = false
+
+    @ManyToMany(cascade = Array(CascadeType.ALL))
+    @JoinTable(name = "feature_flag_group_relations")
+    var featureFlags: Array[FeatureFlag] = null
+}
+
+@Entity
+@Table(name = "feature_flags")
+case class FeatureFlag() extends BaseEntity {
+    @Column(name = "name") var name: String = null
+    @Column(name = "value") var value: String = null
+    @Column(name = "type") var valueType: String = null
+    
+    @ManyToMany(cascade = Array(CascadeType.ALL))
+    @JoinTable(name = "feature_flag_group_relations")
+    var groups: Array[UserGroup] = null
 }
