@@ -19,6 +19,9 @@ import components.services.serializer.JsonService
 import business.services.oauth2.vk.ResponseType
 import business.services.oauth2.vk.AccessRight
 import business.services.oauth2.OAuth2System
+import business.services.oauth2.CompositorOAuth2Manager
+import business.services.oauth2.vk.VkOAuth2Manager
+import business.services.oauth2.OAuth2Manager
 
 class ServicesModule(
     environment: Environment,
@@ -29,7 +32,7 @@ class ServicesModule(
 
         val injector = Guice.createInjector(InfraModule())
         val vkAuthorizer = VkOAuth2Authorizer(
-            URIBuilder().setPath(configuration.get[String]("app.services.oauth.vk.baseUri")),
+            URIBuilder(configuration.get[String]("app.services.oauth.vk.baseUri")),
             configuration.get[String]("app.services.oauth.vk.clientId"),
             configuration.get[String]("app.services.oauth.vk.clientSecret"),
             configuration.get[String]("app.services.oauth.vk.redirectUri"),
@@ -41,6 +44,13 @@ class ServicesModule(
         val oauth2Authorizer = CompositorOAuth2Authorizer(Map(
             OAuth2System.VK -> vkAuthorizer
         ))
+        
+        val vkManager = VkOAuth2Manager()
+        val oauth2Manager = CompositorOAuth2Manager(Map(
+            OAuth2System.VK -> vkManager
+        ))
+        
         bind(classOf[OAuth2Authorizer]).toInstance(oauth2Authorizer)
+        bind(classOf[OAuth2Manager]).toInstance(oauth2Manager)
     }
 }

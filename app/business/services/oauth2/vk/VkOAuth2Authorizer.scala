@@ -78,7 +78,7 @@ class VkOAuth2Authorizer(
         val displayTypeStr = displayType.toString.toLowerCase
         val responseTypeStr = responseType.toString.toLowerCase
         val authorizeUri = baseUri
-            .appendPath("authorize")
+            .appendPathSegments("authorize")
             .addParameter("client_id", clientId)
             .addParameter("redirect_uri", redirectUri)
             .addParameter("display", displayTypeStr)

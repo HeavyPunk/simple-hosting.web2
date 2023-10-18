@@ -76,7 +76,7 @@ case class OAuthUser() extends BaseEntity {
     @Column(name = "oauth_token") var oauthToken: String = ""
 
     @OneToOne(cascade = Array(CascadeType.ALL), fetch = FetchType.LAZY)
-    @JoinColumn(name = "user") var user: User = null
+    @JoinColumn(name = "owner") var user: User = null
 }
 
 @Entity

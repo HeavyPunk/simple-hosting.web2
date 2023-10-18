@@ -27,6 +27,7 @@ import business.services.storages.oauth.OAuthUserNotFound
 import business.services.storages.users.UserStorage
 
 class AccessTokenError(val error: String, val description: String)
+class OAuthStateNotDefined
 class OAuthSystemNotFound
 class OAuthUserNotDefined
 class UserNotRegisteredYet
@@ -86,8 +87,10 @@ class OAuth2Controller @Inject() (
         ))))
     }}
 
-    def saveAccessToken(oauthKey: String) = Action.async { implicit request => {
-        val oauthUser = oauth2Storage.findBySecretKey(oauthKey)
+    def saveAccessToken() = Action.async { implicit request => {
+        val oauthKey = request.getQueryString("state")
+            .mapToMonad(OAuthStateNotDefined())
+        val oauthUser = oauthKey.flatMap(key => oauth2Storage.findBySecretKey(key))
         val code = request.getQueryString("code").mapToMonad(
             AccessTokenError(
                 request.getQueryString("error").getOrElse(""),
@@ -116,6 +119,7 @@ class OAuth2Controller @Inject() (
                 case e: AccessError => wrapToFuture(BadRequest(serializeError(s"${e.error}: ${e.errorDescription}")))
                 case e: AccessDenied => wrapToFuture(BadRequest(serializeError(e.toString())))
                 case _: OAuthUserNotFound => wrapToFuture(BadRequest(serializeError("OAuth user not found")))
+                case _: OAuthStateNotDefined => wrapToFuture(BadRequest(serializeError("OAuth state should be defined as query parameter")))
                 case e: Exception => wrapToFuture(InternalServerError(serializeError(e.toString())))
         else wrapToFuture(Ok(""))
     }}

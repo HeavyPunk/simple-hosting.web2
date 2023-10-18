@@ -6,6 +6,7 @@ import components.basic.{
 }
 import business.entities.OAuthUser
 import java.net.URI
+import business.entities.User
 
 
 class CompositorOAuth2Authorizer(val authorizers: Map[OAuth2System, OAuth2Authorizer]) extends OAuth2Authorizer {
@@ -23,4 +24,12 @@ class CompositorOAuth2Authorizer(val authorizers: Map[OAuth2System, OAuth2Author
             .flatMap(authorizer => authorizer.getAccessToken(user, accessCode))
     }
 
+}
+
+class CompositorOAuth2Manager(val managers: Map[OAuth2System, OAuth2Manager]) extends OAuth2Manager {
+    override def constructUser(oauthUser: OAuthUser): Monad[Exception | AccessDenied, User] = 
+        val manager = managers.get(oauthUser.oauthSystem)
+        manager
+            .mapToMonad(Exception(s"Not found oauth manager for ${oauthUser.oauthSystem}"))
+            .flatMap(manager => manager.constructUser(oauthUser))
 }

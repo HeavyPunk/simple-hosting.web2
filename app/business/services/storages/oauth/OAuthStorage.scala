@@ -22,7 +22,7 @@ class OAuthStorage @Inject() (
 
     def findBySecretKey(secretKey: String): Monad[Exception | OAuthUserNotFound, OAuthUser] = 
         val result = query(
-            "from OAuthUser where oauth_key=:oauth_key",
+            "from OAuthUser where oauthKey=:oauth_key",
             ("oauth_key" -> secretKey)
         )
         result match
@@ -30,7 +30,7 @@ class OAuthStorage @Inject() (
             case r: ResultMonad[?, ?] => if r.obj.isEmpty then ErrorMonad(OAuthUserNotFound()) else ResultMonad(r.obj(0))
     def findBySecretCode(secretCode: String): Monad[Exception | OAuthUserNotFound, OAuthUser] =
         val result = query(
-            "from OAuthUser where oauth_code=:oauth_code",
+            "from OAuthUser where oauthCode=:oauth_code",
             ("oauth_code" -> secretCode)
         )
         result match

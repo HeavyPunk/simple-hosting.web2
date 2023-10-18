@@ -16,8 +16,8 @@ POST /api/v2/account/logout controllers.v2.account.LoginControllerV2.logout()
 GET /api/v2/account/me controllers.v2.account.LoginControllerV2.me()
 
 POST /api/v2/account/oauth/authorize controllers.v2.account.OAuth2Controller.authorize()
-POST /api/v2/account/oauth/callback controllers.v2.account.OAuth2Controller.saveAccessToken()
-GET /api/v2/account/oauth/check-for-user-registered controllers.v2.account.OAuth2Controller.checkForUserRegistered()
+GET /api/v2/account/oauth/callback controllers.v2.account.OAuth2Controller.saveAccessToken()
+GET /api/v2/account/oauth/check-for-user-registered/:oauthUserKey controllers.v2.account.OAuth2Controller.checkForUserRegistered(oauthUserKey: String)
 
 GET /api/v2/tariff/get-for-game/:id controllers.v2.tariff.TariffController.getTariffsForGame(id: Long)
 GET /api/v2/tariff/get-all-games controllers.v2.tariff.TariffController.getAllGamesTariffs()
