@@ -11,6 +11,7 @@ import business.services.storages.games.GamesStorage
 import business.services.storages.locations.LocationsStorage
 import com.google.inject.Guice
 import components.services.log.Log
+import business.services.storages.userGroups.UserGroupsStorage
 
 class StoragesModule extends AbstractModule {
     override def configure(): Unit = {
@@ -27,6 +28,7 @@ class StoragesModule extends AbstractModule {
         val tariffStorage = new TariffStorage(relationEntityManager, log.forContext("TariffStorage"))
         val gamesStorage = new GamesStorage(relationEntityManager, log.forContext("GameStorage"))
         val locationsStorage = new LocationsStorage(relationEntityManager, log.forContext("LocationStorage"))
+        val groupsStorage = new UserGroupsStorage(relationEntityManager, log.forContext("GroupStorage"))
 
         bind(classOf[SessionStorage]).toInstance(sessionStorage)
         bind(classOf[UserStorage]).toInstance(userStorage)
@@ -34,5 +36,6 @@ class StoragesModule extends AbstractModule {
         bind(classOf[GameServerStorage]).toInstance(gameServerStorage)
         bind(classOf[GamesStorage]).toInstance(gamesStorage)
         bind(classOf[LocationsStorage]).toInstance(locationsStorage)
+        bind(classOf[UserGroupsStorage]).toInstance(groupsStorage)
     }
 }

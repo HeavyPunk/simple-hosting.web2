@@ -34,13 +34,15 @@ import business.services.storages.session.SessionNotFoundError
 import components.services.log.Log
 import business.services.storages.users.UserNotFoundException
 import components.services.business.LoginUserRequest
-import business.services.storages.groups.GroupsStorage
-import business.services.storages.groups.GroupNotFound
+import business.services.storages.userGroups.{
+    UserGroupsStorage,
+    GroupNotFound
+}
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
     val userStorage: UserStorage,
-    val groupsStorage: GroupsStorage,
+    val groupsStorage: UserGroupsStorage,
     val sessionStorage: SessionStorage,
     val jsonizer: JsonService,
     val log: Log
@@ -75,9 +77,10 @@ class LoginControllerV2 @Inject() (
                     u.passwdHash = PasswordHasher.hash(m.password)
                     u.isTestPeriodAvailable = true
                     u.groups = Array(globalGroup)
+                    globalGroup.bindedUsers = globalGroup.bindedUsers ++ Array(u)
                     ResultMonad(u)
                 })
-
+            
             val sessionId = UUID.randomUUID().toString()
 
             val sessionSaved = user

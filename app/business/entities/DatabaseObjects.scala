@@ -26,6 +26,11 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.SequenceGenerator
 import jakarta.persistence.ManyToMany
 import jakarta.persistence.JoinTable
+import jakarta.persistence.OrderColumn
+import scala.annotation.meta.field
+import java.{util => ju}
+import scala.reflect.ClassTag
+import scala.collection.mutable
 
 @MappedSuperclass
 class BaseEntity{
@@ -60,8 +65,7 @@ case class User () extends BaseEntity {
     @Column(name = "avatar_url", nullable = true) var avatarUrl: String = ""
     @Column(name = "is_test_period_available") var isTestPeriodAvailable: Boolean = false
 
-    @ManyToMany(cascade = Array(CascadeType.ALL))
-    @JoinTable(name = "group_user_relations")
+    @ManyToMany(cascade = Array(CascadeType.ALL), mappedBy = "bindedUsers", fetch = FetchType.LAZY)
     var groups: Array[UserGroup] = null
 
     override def equals(other: Any): Boolean = other.isInstanceOf[User] && other.asInstanceOf[User].login.equals(this.login)
@@ -218,14 +222,26 @@ case class UserSession() extends BaseEntity {
 @Table(name = "users_groups")
 case class UserGroup() extends BaseEntity {
     @ManyToMany(cascade = Array(CascadeType.ALL))
-    @JoinTable(name = "group_user_relations")
+    @JoinTable(
+        name = "group_user_relations",
+        joinColumns = Array(new JoinColumn(name = "group_id", nullable = false)),
+        inverseJoinColumns = Array(new JoinColumn(name = "user_id", nullable = false))
+    )
+    @OrderColumn(name = "user_order", nullable = true)
     var bindedUsers: Array[User] = null
     
+    @Column(name = "name") var name: String = null
+    @ManyToOne(cascade = Array(CascadeType.ALL)) var creator: User = null
     @Column(name = "customizable") var customizable: Boolean = false
 
     @ManyToMany(cascade = Array(CascadeType.ALL))
-    @JoinTable(name = "feature_flag_group_relations")
-    var featureFlags: Array[FeatureFlag] = null
+    @JoinTable(
+        name = "feature_flag_group_relations",
+        joinColumns = Array(new JoinColumn(name = "group_id", nullable = false)),
+        inverseJoinColumns = Array(new JoinColumn(name = "feature_flag_id", nullable = false))
+    )
+    @OrderColumn(name = "")
+    var featureFlags: ju.Set[FeatureFlag] = new ju.HashSet[FeatureFlag]()
 }
 
 @Entity
@@ -235,7 +251,7 @@ case class FeatureFlag() extends BaseEntity {
     @Column(name = "value") var value: String = null
     @Column(name = "type") var valueType: String = null
     
-    @ManyToMany(cascade = Array(CascadeType.ALL))
-    @JoinTable(name = "feature_flag_group_relations")
-    var groups: Array[UserGroup] = null
+    @ManyToMany(cascade = Array(CascadeType.ALL), mappedBy = "featureFlags")
+    // @OrderColumn(name = "flag_order", nullable = true)
+    var groups: mutable.Set[UserGroup] = null
 }
