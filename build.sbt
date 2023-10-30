@@ -30,6 +30,13 @@ libraryDependencies ++= Seq(
     "org.postgresql" % "postgresql" % "42.5.1",
 )
 
+// Slick
+libraryDependencies ++= Seq(
+  "com.typesafe.slick" %% "slick" % "3.5.0-M4",
+  "org.slf4j" % "slf4j-nop" % "1.7.26",
+  "com.typesafe.slick" %% "slick-hikaricp" % "3.5.0-M4"
+)
+
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "com.simplehosting.controllers._"
 

@@ -17,10 +17,8 @@ import components.basic.{
     zipWith,
     serializeForLog
 }
-import business.entities.User
 import components.services.hasher.PasswordHasher
 import components.basic.ResultMonad
-import business.entities.UserSession
 import java.util.UUID
 import components.services.business.LoginUserResponse
 import components.services.business.UserModel
@@ -34,11 +32,22 @@ import business.services.storages.session.SessionNotFoundError
 import components.services.log.Log
 import business.services.storages.users.UserNotFoundException
 import components.services.business.LoginUserRequest
+import business.services.slickStorages.user.{
+    UserStorage => SUserStorage,
+    findByEmail,
+    findByLogin,
+}
+import business.entities.newEntity.User
+import java.util.Date
+import java.time.Instant
+import business.entities.newEntity.UserSession
+import business.services.slickStorages.user.UserNotFound
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
     val userStorage: UserStorage,
     val sessionStorage: SessionStorage,
+    val sUserStorage: SUserStorage,
     val jsonizer: JsonService,
     val log: Log
 ) extends SimpleHostingController(jsonizer):
@@ -56,42 +65,45 @@ class LoginControllerV2 @Inject() (
 
     def register() = Action.async { implicit request: Request[AnyContent] => {
         val model = this.getModelFromJsonRequest[RegisterUserRequest](request)
-        val loginIsExist = model.flatMap(m => userStorage.findByLogin(m.login))
-        val emailIsExist = model.flatMap(m => userStorage.findByEmail(m.email))
+        val loginIsExist = model.flatMap(m => sUserStorage.findByEmail(m.email))
+        val emailIsExist = model.flatMap(m => sUserStorage.findByLogin(m.login))
 
         if (emailIsExist.tryGetValue._2 != null || loginIsExist.tryGetValue._2 != null) {
-            wrapToFuture(BadRequest("This login or email is already in use"))
+            wrapToFuture(BadRequest(serializeError("This login or email is already in use")))
         } else {
             val user = model
                 .flatMap(m => {
-                    var u = User()
-                    u.email = m.email
-                    u.login = m.login
-                    u.passwdHash = PasswordHasher.hash(m.password)
-                    u.isTestPeriodAvailable = true
+                    val creationDate = Date.from(Instant.now())
+                    val u = User(
+                        0,
+                        creationDate = creationDate,
+                        m.login,
+                        m.email,
+                        PasswordHasher.hash(m.password),
+                        UserSession(
+                            0, 
+                            creationDate,
+                            UUID.randomUUID(),
+                            None
+                        ),
+                        false,
+                        None,
+                        true,
+                    )
                     ResultMonad(u)
                 })
 
-            val sessionId = UUID.randomUUID().toString()
-
-            val sessionSaved = user
-                .flatMap(u => {
-                    val newSession = UserSession()
-                    newSession.token = sessionId
-                    u.session = newSession
-                    userStorage.update(u)
-                })
-            
             val result = 
-                user.zipWith(sessionSaved)
-                .flatMap((u, _) => ResultMonad(jsonizer.serialize(LoginUserResponse(
-                    sessionId,
+                user
+                .flatMap(u => sUserStorage.add(u)).zipWith(user)
+                .flatMap((_, u) => ResultMonad(jsonizer.serialize(LoginUserResponse(
+                    u.session.token.toString(),
                     UserModel(
-                        0,
+                        u.id,
                         u.email,
                         u.login,
                         u.isAdmin,
-                        u.avatarUrl
+                        u.avatarUrl.getOrElse("")
                     )
                 ))))
             
@@ -109,20 +121,11 @@ class LoginControllerV2 @Inject() (
 
     def login() = Action.async { implicit request: Request[AnyContent] => {
         val user = getModelFromJsonRequest[LoginUserRequest](request)
-            .flatMap(req => userStorage.findByLogin(req.login))
+            .flatMap(req => sUserStorage.findByLogin(req.login))
         val result = user
             .flatMap(u => {
-                if (u.session != null){
-                    val session = u.session
-                    u.session = null
-                    userStorage.update(u).zipWith(sessionStorage.remove(session))
-                } else ResultMonad((true, true))
-            }).zipWith(user)
-            .flatMap((_, u) => {
-                var session = UserSession()
-                session.token = UUID.randomUUID().toString
-                u.session = session
-                userStorage.update(u)
+                u.session = UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None)
+                sUserStorage.update(u)
             }).zipWith(user)
         val (err, (_, u)) = result.tryGetValue
         if (err != null)
@@ -130,16 +133,16 @@ class LoginControllerV2 @Inject() (
                 case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
-                case _: UserNotFoundException => wrapToFuture(BadRequest("User with this login not found"))
+                case _: UserNotFound => wrapToFuture(BadRequest("User with this login not found"))
                 case _: Exception => wrapToFuture(InternalServerError("Server error"))
         else wrapToFuture(Ok(jsonizer.serialize(LoginUserResponse(
-            u.session.token,
+            u.session.token.toString(),
             UserModel(
                 u.id,
                 u.email,
                 u.login,
                 u.isAdmin,
-                u.avatarUrl
+                u.avatarUrl.getOrElse("")
             )
         )))) 
     }}
