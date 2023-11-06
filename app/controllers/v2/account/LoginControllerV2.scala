@@ -84,10 +84,11 @@ class LoginControllerV2 @Inject() (
             
             val result = 
                 user.zipWith(sessionSaved)
-                .flatMap((u, _) => ResultMonad(jsonizer.serialize(LoginUserResponse(
+                .flatMap((u, _) => userStorage.findByLogin(u.login))
+                .flatMap(u => ResultMonad(jsonizer.serialize(LoginUserResponse(
                     sessionId,
                     UserModel(
-                        0,
+                        u.id,
                         u.email,
                         u.login,
                         u.isAdmin,
