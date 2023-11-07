@@ -4,6 +4,7 @@ import slick.jdbc.PostgresProfile.api._
 import java.util.Date
 import java.time.Instant
 import slick.lifted.ProvenShape
+import slick.model.ForeignKeyAction
 
 class UsersTable(tag: Tag) extends Table[DatabaseUser](tag, "users") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -36,7 +37,6 @@ class GameServerTable(tag: Tag) extends Table[DatabaseGameServer](tag, "game_ser
   def creationDate = column[String]("creationDate", O.Default(Date.from(Instant.now).toGMTString()))
 
   def ownerId = column[Long]("owner_id")
-  def hostId = column[Long]("host_id")
   def name = column[String]("name")
   def slug = column[String]("slug")
   def ip = column[String]("ip")
@@ -48,14 +48,11 @@ class GameServerTable(tag: Tag) extends Table[DatabaseGameServer](tag, "game_ser
   def isActiveVm = column[Boolean]("is_active_vm", O.Default(false))
   def isActiveServer = column[Boolean]("is_active_server", O.Default(false))
   def tariffId = column[Long]("tariff_id")
-  def * = (id, creationDate, ownerId, hostId, name, slug, ip, uuid, kind, version, locationId, isPublic, isActiveVm, isActiveServer, tariffId).mapTo[DatabaseGameServer]
+  def * = (id, creationDate, ownerId, name, slug, ip, uuid, kind, version, locationId, isPublic, isActiveVm, isActiveServer, tariffId).mapTo[DatabaseGameServer]
 
   def owner = foreignKey("SERVER_OWNER_FK", ownerId, TableQuery[UsersTable])(_.id, onDelete = ForeignKeyAction.Cascade)
-  def host = foreignKey("SERVER_HOST_FK", hostId, TableQuery[HostsTable])(_.id, onDelete = ForeignKeyAction.Cascade)
   def location = foreignKey("SERVER_LOC_FK", locationId, TableQuery[LocationsTable])(_.id, onDelete = ForeignKeyAction.Cascade)
   def tariff = foreignKey("SERVER_TARIFF_FK", tariffId, TableQuery[TariffsTable])(_.id, onDelete = ForeignKeyAction.Cascade)
-
-  def ports = ??? //one to many
 }
 
 class LocationsTable(tag: Tag) extends Table[DatabaseLocation](tag, "locations") {
@@ -74,7 +71,10 @@ class GameServerPortsTable(tag: Tag) extends Table[DatabaseGameServerPort](tag, 
 
   def port = column[Int]("port")
   def portKind = column[String]("port_kind")
-  def * = (id, creationDate, port, portKind).mapTo[DatabaseGameServerPort]
+  def gameServerId = column[Long]("game_server_id")
+
+  def gameServerFK = foreignKey("PORT_SERVER_FK", gameServerId, TableQuery[GameServerTable])(_.id, onDelete = ForeignKeyAction.Cascade)
+  def * = (id, creationDate, port, portKind, gameServerId).mapTo[DatabaseGameServerPort]
 }
 
 class HostsTable(tag: Tag) extends Table[DatabaseHost](tag, "host") {
@@ -139,19 +139,18 @@ class TariffsTable(tag: Tag) extends Table[DatabaseTariff](tag, "tariffs") {
 
   def name = column[String]("name")
   def gameId = column[Long]("game_id")
-  def specificationId = column[Long]("specification_id")
   def description = column[String]("description")
 
-  def * = (id, creationDate, name, gameId, specificationId, description).mapTo[DatabaseTariff]
+  def * = (id, creationDate, name, gameId, description).mapTo[DatabaseTariff]
 
   def game = foreignKey("TARIFF_GAME_FK", gameId, TableQuery[GamesTable])(_.id, onDelete = ForeignKeyAction.Cascade)
-  def specification = foreignKey("TARIFF_SPEC_FK", specificationId, TableQuery[TariffSpecificationsTable])(_.id, onDelete = ForeignKeyAction.Cascade)
 }
 
 class TariffSpecificationsTable(tag: Tag) extends Table[DatabaseTariffSpecification](tag, "tariff_specifications") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def creationDate = column[String]("creationDate", O.Default(Date.from(Instant.now).toGMTString()))
 
+  def tariffId = column[Long]("tariff_id")
   def monthPrice = column[Double]("month_price", O.Default(0.0))
   def isPricePerPlayer = column[Boolean]("is_price_per_player")
   def isMemoryPerSlot = column[Boolean]("is_memory_per_slot")
@@ -165,9 +164,12 @@ class TariffSpecificationsTable(tag: Tag) extends Table[DatabaseTariffSpecificat
   def availableCpu = column[Long]("available_cpu")
   def cpuFrequency = column[Long]("cpu_frequency")
   def cpuName = column[String]("cpu_name")
+
+  def tariffFK = foreignKey("SPEC_TAR_FK", tariffId, TableQuery[TariffsTable])(_.id, onDelete = ForeignKeyAction.Cascade, onUpdate = ForeignKeyAction.Cascade)
   def * = (
     id,
     creationDate,
+    tariffId,
     monthPrice,
     isPricePerPlayer,
     isMemoryPerSlot,
@@ -192,5 +194,8 @@ class TariffSpecificationPortsTable(tag: Tag) extends Table[DatabaseTariffSpecif
 
   def port = column[String]("port")
   def kind = column[String]("kind")
-  def * = (id, creationDate, port, kind).mapTo[DatabaseTariffSpecificationPort]
+  def specificationId = column[Long]("specification_id")
+  
+  def specificationFK = foreignKey("SPEC_TAR_FK", specificationId, TableQuery[TariffSpecificationsTable])(_.id, onDelete = ForeignKeyAction.Cascade, onUpdate = ForeignKeyAction.Cascade)
+  def * = (id, creationDate, specificationId, port, kind).mapTo[DatabaseTariffSpecificationPort]
 }

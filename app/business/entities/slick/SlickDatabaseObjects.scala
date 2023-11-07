@@ -18,7 +18,6 @@ case class DatabaseGameServer(
   val id: Long,
   val creationDate: String,
   val ownerId: Long,
-  var hostId: Long,
   var name: String,
   val slug: String,
   var ip: String,
@@ -41,6 +40,7 @@ case class DatabaseLocation(
 case class DatabaseGameServerPort(
   val id: Long,
   val creationDate: String,
+  val gameServerId: Long,
   val port: Int,
   val portKind: String,
 )
@@ -77,12 +77,12 @@ case class DatabaseTariff(
   val creationDate: String,
   var name: String,
   val gameId: Long,
-  val specificationId: Long,
   var description: String,
 )
 case class DatabaseTariffSpecification(
   val id: Long,
   val creationDate: String,
+  val tariffId: Long,
   var monthPrice: Double,
   var isPricePerPlayer: Boolean,
   var isMemoryPerSlot: Boolean,
@@ -100,6 +100,7 @@ case class DatabaseTariffSpecification(
 case class DatabaseTariffSpecificationPort(
   val id: Long,
   val creationDate: String,
+  val specificationId: Long,
   val port: String,
   val kind: String,
 )

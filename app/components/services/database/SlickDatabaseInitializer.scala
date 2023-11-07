@@ -41,15 +41,15 @@ class SlickDatabaseInitializer {
             sessions.schema.createIfNotExists,
             locations.schema.createIfNotExists,
             hostsTable.schema.createIfNotExists,
-            portsTable.schema.createIfNotExists,
             fileBuckets.schema.createIfNotExists,
             fileBucketFile.schema.createIfNotExists,
             userFileStorage.schema.createIfNotExists,
             games.schema.createIfNotExists,
+            tariffs.schema.createIfNotExists,
             tariffSpecifications.schema.createIfNotExists,
             tariffSpecificationPorts.schema.createIfNotExists,
-            tariffs.schema.createIfNotExists,
             gameServer.schema.createIfNotExists,
+            portsTable.schema.createIfNotExists,
         )), timeout)
     }
 }

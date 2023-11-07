@@ -2,6 +2,7 @@ package components.basic
 
 trait Monad[E, A]:
     def flatMap[E1, B](f: A => Monad[E1, B]): Monad[E | E1, B]
+    def >>=[E1, B](f: A => Monad[E1, B]): Monad[E | E1, B] = flatMap(f)
     def tryGetValue: (E, A)
 
 

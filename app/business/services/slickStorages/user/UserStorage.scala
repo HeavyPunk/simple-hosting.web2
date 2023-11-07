@@ -19,12 +19,30 @@ import java.util.UUID
 import java.time.Instant
 import components.clients.curseforge.ApiPaths.categories
 import business.entities.newEntity.UserSession
+import business.entities.ObjectObservator
 
 class UserNotFound
 
 trait UserStorage extends BaseStorage[User, UsersTable, UserNotFound]
 
 class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserStorage {
+    override def create(modifier: User => Unit = null): User = {
+        val creationDate = Date.from(Instant.now())
+        val user = User(
+            id = 0,
+            creationDate = creationDate,
+            login = "",
+            email = "",
+            passwdHash = "",
+            session = null,
+            isAdmin = false,
+            avatarUrl = None,
+            isTestPeriodAvailable = false
+        )
+        if (modifier != null)
+            modifier(user)
+        user
+    }
 
     override def add(item: User): Monad[Exception, Boolean] = {
         val users = TableQuery[UsersTable]
@@ -34,7 +52,13 @@ class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserSto
         try {
             val user = DatabaseUser(0, currentDate, item.login, item.email, item.passwdHash, item.isAdmin, item.avatarUrl, item.isTestPeriodAvailable)
             val userId = Await.result(db.run(users returning users.map(_.id) += user), operationTimeout)
-            val session = DatabaseUserSession(item.session.id, item.session.creationDate.toGMTString(), userId, item.session.token.toString(), item.session.data)
+            val session = DatabaseUserSession(
+                item.session.get.tryGetValue._2.id,
+                item.session.get.tryGetValue._2.creationDate.toGMTString(),
+                userId,
+                item.session.get.tryGetValue._2.token.toString(),
+                item.session.get.tryGetValue._2.data
+            )
             val insertSessionAction = sessions += session
             Await.result(db.run(insertSessionAction), operationTimeout)
             ResultMonad(true)
@@ -57,12 +81,12 @@ class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserSto
                 item.avatarUrl,
                 item.isTestPeriodAvailable
             ))
-            val sessionUpdateAction = sessions.filter(_.id === item.session.id).update(DatabaseUserSession(
-                item.session.id,
-                item.session.creationDate.toGMTString(),
+            val sessionUpdateAction = sessions.filter(_.id === item.session.get.tryGetValue._2.id).update(DatabaseUserSession(
+                item.session.get.tryGetValue._2.id,
+                item.session.get.tryGetValue._2.creationDate.toGMTString(),
                 item.id,
-                item.session.token.toString(),
-                item.session.data
+                item.session.get.tryGetValue._2.token.toString(),
+                item.session.get.tryGetValue._2.data
             ))
             Await.result(db.run(userUpdateAction.andThen(sessionUpdateAction)), operationTimeout)
             ResultMonad(true)
@@ -85,7 +109,7 @@ class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserSto
                 dbResult._3,
                 dbResult._4,
                 dbResult._5,
-                UserSession(dbResult._6, java.util.Date(dbResult._7), UUID.fromString(dbResult._8), dbResult._9),
+                ObjectObservator(UserSession(dbResult._6, java.util.Date(dbResult._7), UUID.fromString(dbResult._8), dbResult._9)),
                 dbResult._10,
                 dbResult._11,
                 dbResult._12

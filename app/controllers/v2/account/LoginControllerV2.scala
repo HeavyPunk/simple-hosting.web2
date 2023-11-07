@@ -42,6 +42,7 @@ import java.util.Date
 import java.time.Instant
 import business.entities.newEntity.UserSession
 import business.services.slickStorages.user.UserNotFound
+import business.entities.ObjectObservator
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
@@ -80,12 +81,12 @@ class LoginControllerV2 @Inject() (
                         m.login,
                         m.email,
                         PasswordHasher.hash(m.password),
-                        UserSession(
+                        ObjectObservator(UserSession(
                             0, 
                             creationDate,
                             UUID.randomUUID(),
                             None
-                        ),
+                        )),
                         false,
                         None,
                         true,
@@ -96,55 +97,58 @@ class LoginControllerV2 @Inject() (
             val result = 
                 user
                 .flatMap(u => sUserStorage.add(u)).zipWith(user)
-                .flatMap((_, u) => ResultMonad(jsonizer.serialize(LoginUserResponse(
-                    u.session.token.toString(),
+                .flatMap((_, u) => u.session.get).zipWith(user)
+                .flatMap((session, user) => ResultMonad(jsonizer.serialize(LoginUserResponse(
+                    session.token.toString(),
                     UserModel(
-                        u.id,
-                        u.email,
-                        u.login,
-                        u.isAdmin,
-                        u.avatarUrl.getOrElse("")
+                        user.id,
+                        user.email,
+                        user.login,
+                        user.isAdmin,
+                        user.avatarUrl.getOrElse("")
                     )
                 ))))
             
             val (err, response) = result.tryGetValue
             if (err != null)
                 err match
-                    case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-                    case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-                    case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
-                    case _: Exception => wrapToFuture(InternalServerError("Server error"))
+                    case _: RequestBodyNotFound => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
+                    case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
+                    case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("Request body must be a json")))
+                    case _: Exception => wrapToFuture(InternalServerError(serializeError("Server error")))
             else
                 wrapToFuture(Created(response))
         }
     }}
 
     def login() = Action.async { implicit request: Request[AnyContent] => {
-        val user = getModelFromJsonRequest[LoginUserRequest](request)
-            .flatMap(req => sUserStorage.findByLogin(req.login))
-        val result = user
-            .flatMap(u => {
-                u.session = UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None)
-                sUserStorage.update(u)
-            }).zipWith(user)
-        val (err, (_, u)) = result.tryGetValue
-        if (err != null)
-            err match
-                case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-                case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-                case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
-                case _: UserNotFound => wrapToFuture(BadRequest("User with this login not found"))
-                case _: Exception => wrapToFuture(InternalServerError("Server error"))
-        else wrapToFuture(Ok(jsonizer.serialize(LoginUserResponse(
-            u.session.token.toString(),
-            UserModel(
-                u.id,
-                u.email,
-                u.login,
-                u.isAdmin,
-                u.avatarUrl.getOrElse("")
-            )
-        )))) 
+        // val user = getModelFromJsonRequest[LoginUserRequest](request)
+        //     .flatMap(req => sUserStorage.findByLogin(req.login))
+        // val result = user
+        //     .flatMap(u => {
+        //         u.session = () => ResultMonad(UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None))
+        //         sUserStorage.update(u)
+        //     }).zipWith(user)
+        //     .flatMap((_, u) => u.session()).zipWith(user)
+        // val (err, (session, user)) = result.tryGetValue
+        // if (err != null)
+        //     err match
+        //         case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
+        //         case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
+        //         case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
+        //         case _: UserNotFound => wrapToFuture(BadRequest("User with this login not found"))
+        //         case _: Exception => wrapToFuture(InternalServerError("Server error"))
+        // else wrapToFuture(Ok(jsonizer.serialize(LoginUserResponse(
+        //     session().token.toString(),
+        //     UserModel(
+        //         user.id,
+        //         user.email,
+        //         user.login,
+        //         user.isAdmin,
+        //         user.avatarUrl.getOrElse("")
+        //     )
+        // )))) 
+        ???
     }}
 
     def logout() = Action.async { implicit request: Request[AnyContent] => {

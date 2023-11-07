@@ -4,6 +4,7 @@ import components.basic.Monad
 import slick.lifted.Rep
 
 trait BaseStorage[TEntity, TTable, TEntityNotFoundError] {
+    def create(modifier: TEntity => Unit = null): TEntity
     def add(item: TEntity): Monad[Exception, Boolean]
     def update(item: TEntity): Monad[Exception, Boolean]
     def find(predicate: TTable => Rep[Boolean]): Monad[Exception | TEntityNotFoundError, Seq[TEntity]]

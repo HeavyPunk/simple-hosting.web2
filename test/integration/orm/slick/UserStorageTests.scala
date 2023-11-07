@@ -20,6 +20,7 @@ import components.basic.{
     ResultMonad,
     zipWith
 }
+import business.entities.ObjectObservator
 
 class UserStorageTests extends munit.FunSuite {
     var db: Database = null
@@ -43,7 +44,7 @@ class UserStorageTests extends munit.FunSuite {
             "test-user_add_test",
             "test-user_add_test@simplehosting.com",
             PasswordHasher.hash("qwerty"),
-            UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None),
+            ObjectObservator(UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None)),
             false,
             None,
             false
@@ -60,7 +61,7 @@ class UserStorageTests extends munit.FunSuite {
             "test-user_remove_test",
             "test-user_remove_test@simplehosting.com",
             PasswordHasher.hash("qwerty"),
-            UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None),
+            ObjectObservator(UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None)),
             false,
             None,
             false
@@ -82,7 +83,7 @@ class UserStorageTests extends munit.FunSuite {
             "test-user_get_session_test",
             "test-user_get_session_test@simplehosting.com",
             PasswordHasher.hash("qwerty"),
-            UserSession(0, Date.from(Instant.now()), sessionToken, None),
+            ObjectObservator(UserSession(0, Date.from(Instant.now()), sessionToken, None)),
             false,
             None,
             false
@@ -93,7 +94,11 @@ class UserStorageTests extends munit.FunSuite {
         if (err != null) {
             fail(err.toString())
         }
-        assert(result.session.token == sessionToken)
+        val (sessionErr, session) = result.session.get.tryGetValue
+        if (sessionErr != null) {
+            fail(sessionErr.toString())
+        }
+        assert(session.token == sessionToken)
     }
     
     test("UserStorage updates user data"){
@@ -105,7 +110,7 @@ class UserStorageTests extends munit.FunSuite {
             "test-user_updates_self_test",
             "test-user_updates_self_test@simplehosting.com",
             PasswordHasher.hash("qwerty"),
-            UserSession(0, Date.from(Instant.now()), sessionToken, None),
+            ObjectObservator(UserSession(0, Date.from(Instant.now()), sessionToken, None)),
             false,
             None,
             false
@@ -121,7 +126,11 @@ class UserStorageTests extends munit.FunSuite {
         if (err != null) {
             fail(err.toString())
         }
-        assert(result.session.token == sessionToken)
+        val (sessionErr, session) = result.session.get.tryGetValue
+        if (sessionErr != null) {
+            fail(sessionErr.toString())
+        }
+        assert(session.token == sessionToken)
     }
 
     test("UserStorage updates reference data"){
@@ -134,24 +143,28 @@ class UserStorageTests extends munit.FunSuite {
             "test-user_updates_session_test",
             "test-user_updates_session@simplehosting.com",
             PasswordHasher.hash("qwerty"),
-            UserSession(0, Date.from(Instant.now()), sessionToken, None),
+            ObjectObservator(UserSession(0, Date.from(Instant.now()), sessionToken, None)),
             false,
             None,
             false
         )
-        val (err, result) = userStorage.add(user)
+        val databaseUser = userStorage.add(user)
+            >>= (_ => userStorage.findByEmail("test-user_updates_session@simplehosting.com"))
+        val sessionUpdated = databaseUser
+            >>= (u => u.session.get)
+            >>= (session => ResultMonad(session.token = newSessionToken))
+        val (err, result) = databaseUser.zipWith(sessionUpdated)
+            .flatMap((u, _) => userStorage.update(u))
             .flatMap(_ => userStorage.findByEmail("test-user_updates_session@simplehosting.com"))
-            .flatMap(u => {
-                u.session.token = newSessionToken
-                userStorage.update(u)
-            })
-            .flatMap(_ => {
-                userStorage.findByEmail("test-user_updates_session@simplehosting.com")
-            })
             .tryGetValue
         if (err != null) {
             fail(err.toString())
         }
-        assert(result.session.token == newSessionToken)
+
+        val (sessionErr, session) = result.session.get.tryGetValue
+        if (sessionErr != null) {
+            fail(sessionErr.toString())
+        }
+        assert(session.token == newSessionToken)
     }
 }
