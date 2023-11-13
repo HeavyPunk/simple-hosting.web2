@@ -8,14 +8,12 @@ import play.api.test._
 import play.api.test.Helpers._
 import play.api.inject.guice.GuiceInjectorBuilder
 import di.modules.InfraModule
-import di.modules.StoragesModule
 import play.api.inject.guice.GuiceApplicationBuilder
 import components.services.serializer.JsonService
 import components.services.log.Log
 import play.api.mvc.Headers
 import components.services.business.RegisterUserRequest
 import java.util.UUID
-import business.services.storages.users.UserNotFoundException
 import play.api.Play.materializer
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json

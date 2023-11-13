@@ -7,7 +7,6 @@ import business.services.slickStorages.servers.SlickGameServersStorage
 import play.api.inject.guice.GuiceApplicationBuilder
 import business.services.slickStorages.servers.{
     GameServersStorage,
-    removeAll
 }
 import business.entities.newEntity.{
     GameServer,
@@ -40,7 +39,7 @@ class GameServerStorageTests extends munit.FunSuite{
     }
     override def afterAll(): Unit = {
         val gameServersStorage = injector.instanceOf(classOf[GameServersStorage])
-        gameServersStorage.removeAll()
+        // gameServersStorage.removeAll()
     }
 
     def createTestUserIfNeeded(login: String) = {

@@ -37,6 +37,9 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % "3.5.0-M4"
 )
 
+// MongoDB
+libraryDependencies += "org.mongodb.scala" % "mongo-scala-driver_2.13" % "4.4.0"
+
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "com.simplehosting.controllers._"
 
