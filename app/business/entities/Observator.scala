@@ -7,6 +7,7 @@ import components.basic.{
 
 trait Observator[TGetErrors, TModel] {
     def get: Monad[TGetErrors, TModel]
+    def initialized: Boolean
 }
 
 class DatabaseObservator[TGetErrors, TModel](getter: () => Monad[TGetErrors, TModel]) extends Observator[TGetErrors, TModel]
@@ -18,10 +19,13 @@ class DatabaseObservator[TGetErrors, TModel](getter: () => Monad[TGetErrors, TMo
             got
         } else got
     }
+
+    override def initialized: Boolean = got != null
 }
 
 class ObjectObservator[TGetErrors, TModel](obj: TModel) extends Observator[TGetErrors, TModel]
 {
     val cached: Monad[TGetErrors, TModel] = ResultMonad(obj)
     override def get: Monad[TGetErrors, TModel] = cached
+    override def initialized: Boolean = true
 }

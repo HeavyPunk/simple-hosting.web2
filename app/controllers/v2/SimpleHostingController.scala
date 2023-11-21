@@ -6,7 +6,7 @@ import components.basic.{
     mapToMonad
 }
 import play.api.mvc.Request
-import business.entities.User
+import business.entities.newEntity.User
 import components.basic.UserTypedKey
 import components.basic.ErrorMonad
 import components.basic.ResultMonad
@@ -28,7 +28,7 @@ abstract class SimpleHostingController(jsonizer: JsonService) extends BaseContro
         val user = request.attrs.get(UserTypedKey.key)
         user match
             case None => ErrorMonad(UserNotFoundForRequest())
-            case u: Some[User] => ResultMonad(u.get)
+            case Some(u) => ResultMonad(u)
 
     def getJsonFromRequest(request: Request[AnyContent]): Monad[RequestBodyNotFound | JsonNotFoundForRequestBody, String] =
         if (!request.hasBody)

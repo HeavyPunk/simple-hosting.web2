@@ -8,19 +8,17 @@ import akka.stream.Materializer
 import play.api.mvc.{RequestHeader, Result}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
-import business.services.storages.users.UserStorage
-import business.services.storages.session.SessionStorage
 import play.api.http.HttpEntity
 import play.api.mvc.ResponseHeader
 import play.api.libs.typedmap.TypedKey
 import components.basic.UserTypedKey
 import components.services.log.Log
+import business.services.slickStorages.user.UserStorage
 
 
 class AuthFilter @Inject()(
     implicit val mat: Materializer,
     ec: ExecutionContext,
-    val sessionStorage: SessionStorage,
     val usersStorage: UserStorage,
     val log: Log,
 ) extends Filter {
@@ -30,9 +28,8 @@ class AuthFilter @Inject()(
         val token = rh.headers.get(authHeader)
         if (token.isEmpty)
             return nextFilter(rh)
-        val result = sessionStorage
+        val result = usersStorage
             .findByToken(token.get)
-            .flatMap(s => usersStorage.findBySession(s))
         
         val (err, user) = result.tryGetValue
         if (err != null)

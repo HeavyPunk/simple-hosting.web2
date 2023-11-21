@@ -1,7 +1,7 @@
 package components.clients.compositor.models
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import business.entities.GameServerPort
+import business.entities.newEntity.GameServerPort
 
 case class StopVmWithGameServerRequest (
     val gameServerHash: String,

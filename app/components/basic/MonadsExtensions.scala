@@ -63,7 +63,9 @@ extension [E, A](monad: Monad[E, A]) //library extensions
         monad match
             case _: ErrorMonad[?, ?] => null.asInstanceOf[T]
             case m: ResultMonad[?, ?] => f(m.obj)
-        
+    
+    def enrichWith[E1, A1](f: A => Monad[E1, A1]): Monad[E | E1, (A, A1)] = 
+        zipWith(monad.flatMap(f))
         
 
 extension [A](opt: Option[A]) //domain driven extensions

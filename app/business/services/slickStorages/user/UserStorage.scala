@@ -1,29 +1,32 @@
 package business.services.slickStorages.user
 
-import business.services.slickStorages.BaseStorage
+import business.entities.ObjectObservator
 import business.entities.newEntity.User
-import slick.lifted.TableQuery
-import business.entities.slick.UsersTable
-import slick.jdbc.PostgresProfile.api._
-import components.basic.Monad
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import java.util.concurrent.TimeoutException
-import components.basic.ErrorMonad
-import components.basic.ResultMonad
-import business.entities.slick.UserSessionsTable
-import business.entities.slick.DatabaseUserSession
+import business.entities.newEntity.UserSession
 import business.entities.slick.DatabaseUser
+import business.entities.slick.DatabaseUserSession
+import business.entities.slick.UserSessionsTable
+import business.entities.slick.UsersTable
+import business.services.slickStorages.BaseStorage
+import components.basic.ErrorMonad
+import components.basic.Monad
+import components.basic.ResultMonad
+import components.clients.curseforge.ApiPaths.categories
+import slick.jdbc.PostgresProfile.api._
+import slick.lifted.TableQuery
+
+import java.time.Instant
 import java.util.Date
 import java.util.UUID
-import java.time.Instant
-import components.clients.curseforge.ApiPaths.categories
-import business.entities.newEntity.UserSession
-import business.entities.ObjectObservator
+import java.util.concurrent.TimeoutException
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class UserNotFound
 
-trait UserStorage extends BaseStorage[User, UsersTable, UserNotFound]
+trait UserStorage extends BaseStorage[User, UsersTable, Exception, Exception, Exception, Exception]:
+    def findByToken(token: String): Monad[UserNotFound | Exception, User]
+
 
 class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserStorage {
     override def create(modifier: User => Unit = null): User = {
@@ -95,7 +98,7 @@ class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserSto
         }
     }
 
-    override def find(predicate: UsersTable => Rep[Boolean]): Monad[Exception | UserNotFound, Seq[User]] = {
+    override def find(predicate: UsersTable => Rep[Boolean]): Monad[Exception, Seq[User]] = {
         val users = TableQuery[UsersTable]
         val sessions = TableQuery[UserSessionsTable]
         try {
@@ -115,6 +118,31 @@ class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserSto
                 dbResult._12
             ))
             ResultMonad(res)
+        } catch {
+            case e: Exception => ErrorMonad(e)
+        }
+    }
+
+    override def findByToken(token: String): Monad[UserNotFound | Exception, User] = {
+        val users = TableQuery[UsersTable]
+        val sessions = TableQuery[UserSessionsTable]
+        try {
+            val innerJoin = for {
+                (u, s) <- users join sessions on (_.id === _.userId) filter(s => s._2.token === token)
+            } yield (u.id, u.creationDate, u.login, u.email, u.passwdHash, s.id, s.creationDate, s.token, s.data, u.isAdmin, u.avatarUrl, u.isTestPeriodAvailable)
+            val dbRes = Await.result(db.run(innerJoin.result), operationTimeout)
+            val res = dbRes.map(dbResult => User(
+                dbResult._1,
+                java.util.Date(dbResult._2),
+                dbResult._3,
+                dbResult._4,
+                dbResult._5,
+                ObjectObservator(UserSession(dbResult._6, java.util.Date(dbResult._7), UUID.fromString(dbResult._8), dbResult._9)),
+                dbResult._10,
+                dbResult._11,
+                dbResult._12
+            ))
+            if res.isEmpty then ErrorMonad(UserNotFound()) else ResultMonad(res.head)
         } catch {
             case e: Exception => ErrorMonad(e)
         }

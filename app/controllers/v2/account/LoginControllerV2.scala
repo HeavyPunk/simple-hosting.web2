@@ -54,7 +54,7 @@ class LoginControllerV2 @Inject() (
 ) extends SimpleHostingController(jsonizer):
     def me() = Action.async { implicit request: Request[AnyContent] => {
         val result = findUserForCurrentRequest(request)
-            .flatMap(u => ResultMonad(GetCurrentUserResponse(u.email, u.login, u.avatarUrl)))
+            .flatMap(u => ResultMonad(GetCurrentUserResponse(u.email, u.login, u.avatarUrl.getOrElse(""))))
 
         val (err, user) = result.tryGetValue
         if (err != null)
@@ -122,33 +122,40 @@ class LoginControllerV2 @Inject() (
     }}
 
     def login() = Action.async { implicit request: Request[AnyContent] => {
-        // val user = getModelFromJsonRequest[LoginUserRequest](request)
-        //     .flatMap(req => sUserStorage.findByLogin(req.login))
-        // val result = user
-        //     .flatMap(u => {
-        //         u.session = () => ResultMonad(UserSession(0, Date.from(Instant.now()), UUID.randomUUID(), None))
-        //         sUserStorage.update(u)
-        //     }).zipWith(user)
-        //     .flatMap((_, u) => u.session()).zipWith(user)
-        // val (err, (session, user)) = result.tryGetValue
-        // if (err != null)
-        //     err match
-        //         case _: RequestBodyNotFound => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-        //         case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(s"You should specify a user's password and login"))
-        //         case _: JsonCannotBeParsed => wrapToFuture(BadRequest(s"Request body must be a json"))
-        //         case _: UserNotFound => wrapToFuture(BadRequest("User with this login not found"))
-        //         case _: Exception => wrapToFuture(InternalServerError("Server error"))
-        // else wrapToFuture(Ok(jsonizer.serialize(LoginUserResponse(
-        //     session().token.toString(),
-        //     UserModel(
-        //         user.id,
-        //         user.email,
-        //         user.login,
-        //         user.isAdmin,
-        //         user.avatarUrl.getOrElse("")
-        //     )
-        // )))) 
-        ???
+        val user = getModelFromJsonRequest[LoginUserRequest](request)
+            .flatMap(req => sUserStorage.findByLogin(req.login))
+        val session = user
+            .flatMap(u => u.session.get)
+        val userUpdateAction = session
+            .flatMap(session => {
+                session.creationDate = Date.from(Instant.now())
+                session.token = UUID.randomUUID()
+                session.data = None
+                ResultMonad(true)
+            }).zipWith(user)
+            .flatMap((_, user) => sUserStorage.update(user))
+        
+        val result = userUpdateAction.zipWith(user, session)
+            .flatMap((_, user, session) => ResultMonad(LoginUserResponse(
+                session.token.toString(),
+                UserModel(
+                    user.id,
+                    user.email,
+                    user.login,
+                    user.isAdmin,
+                    user.avatarUrl.getOrElse("")
+                )
+            )))
+        
+        val (err, response) = result.tryGetValue
+        if (err != null)
+            err match
+                case _: RequestBodyNotFound => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
+                case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
+                case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("Request body must be a json")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User with this login not found")))
+                case _: Exception => wrapToFuture(InternalServerError(serializeError("Server error")))
+        else wrapToFuture(Ok(jsonizer.serialize(response)))
     }}
 
     def logout() = Action.async { implicit request: Request[AnyContent] => {

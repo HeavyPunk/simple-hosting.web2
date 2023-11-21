@@ -4,10 +4,6 @@ import components.clients.compositor.{
     ContainerNotCreated,
     ContainerNotRemoved
 }
-import business.services.storages.servers.{
-    GameServerNotFoundException,
-    GameServerStorage
-}
 import controllers.v2.servers.{
     ErrorWhenStartingServer,
     ErrorWhenStoppingServer
@@ -17,10 +13,10 @@ import components.clients.compositor.{
     CompositorClientWrapper,
     CreateContainerRequest
 }
-import business.entities.GameServer
 import components.basic.{ 
     zipWith,
     mapToMonad,
+    enrichWith,
     Monad,
     ResultMonad
 }
@@ -31,52 +27,84 @@ import components.clients.controller.ControllerClientFactory
 import io.github.heavypunk.controller.client.Settings
 import java.time.Duration
 import components.services.log.Log
-import business.entities.GameServerPort
 import components.clients.compositor.models.StartServerResponse
 import components.clients.compositor.models.PortDescription
 import io.github.heavypunk.controller.client.contracts.server.StartServerRequest
 import components.basic.ErrorMonad
 import io.github.heavypunk.controller.client.contracts.server.StopServerRequest
+import business.services.slickStorages.servers.{
+    GameServersStorage,
+    findServersByOwner,
+    removeById,
+}
+import business.entities.newEntity.GameServer
+import java.util.Date
+import java.time.Instant
+import business.services.slickStorages.locations.LocationNotFound
+import business.services.slickStorages.tariff.TariffNotFound
+import business.services.slickStorages.user.UserNotFound
+import business.entities.ObjectObservator
+import business.entities.DatabaseObservator
+import business.entities.newEntity.GameServerPort
 
 class VmNotFound
 
 trait ServersManagementService:
-    def createVm(request: CreateVmRequest): Monad[ContainerNotCreated | Exception, CreateVmResponse]
-    def startVm(request: StartVmRequest): Monad[VmNotFound| Exception, StartVmResponse]
-    def stopVm(request: StopVmRequest): Monad[VmNotFound | Exception, StopVmResponse]
-    def updateVm(request: UpdateVmRequest): Monad[VmNotFound | Exception, UpdateVmResponse]
-    def removeVm(request: RemoveVmRequest): Monad[VmNotFound | ContainerNotRemoved | Exception, RemoveVmResponse]
-    def restartVm(request: RestartVmRequest): Monad[VmNotFound | Exception, RestartVmResponse]
+    def createVm(request: CreateVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | ContainerNotCreated | Exception, CreateVmResponse]
+    def startVm(request: StartVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | VmNotFound| Exception, StartVmResponse]
+    def stopVm(request: StopVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | VmNotFound | Exception, StopVmResponse]
+    def updateVm(request: UpdateVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | VmNotFound | Exception, UpdateVmResponse]
+    def removeVm(request: RemoveVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | VmNotFound | ContainerNotRemoved | Exception, RemoveVmResponse]
+    def restartVm(request: RestartVmRequest): Monad[LocationNotFound | TariffNotFound | UserNotFound | VmNotFound | Exception, RestartVmResponse]
     def startGameServer(request: StartGameServerRequest): Monad[VmNotFound | ErrorWhenStartingServer | Exception, StartGameServerResponse]
     def stopGameServer(request: StopGameServerRequest): Monad[VmNotFound | ErrorWhenStoppingServer | Exception, StopGameServerResponse]
 
 class CommonServersManagementService @Inject() (
     val compositorWrapper: CompositorClientWrapper,
-    val gameServerStorage: GameServerStorage,
+    val gameServerStorage: GameServersStorage,
     val controllerClientFactory: ControllerClientFactory,
     val controllerClientSettings: Settings,
     val log: Log
 ) extends ServersManagementService {
 
-    override def createVm(request: CreateVmRequest): Monad[ContainerNotCreated | Exception, CreateVmResponse] = {
-        val container = compositorWrapper.createContainerMonad(CreateContainerRequest(
-            request.tariff.specification.imageUri,
-            request.vmSlug.toString,
-            request.tariff.specification.availableRamBytes,
-            request.tariff.specification.availableDiskBytes,
-            request.tariff.specification.availableSwapBytes,
-            request.tariff.specification.vmExposePorts.map(_.port)
-        ))
-        val result = container
-            .flatMap(c => {
-                val server = GameServer()
-                server.name = request.vmName
-                server.slug = request.vmSlug.toString
-                server.tariff = request.tariff
-                server.owner = request.user
-                server.uuid = c.vmId
-                server.kind = request.game.name
-                server.location = request.location
+    override def createVm(request: CreateVmRequest) = {
+        val req = request.tariff.specification.get.enrichWith(spec => spec.vmExposePorts.get)
+            .flatMap((specification, specPorts) => ResultMonad(CreateContainerRequest(
+                specification.imageUri,
+                request.vmSlug.toString,
+                specification.availableRamBytes,
+                specification.availableDiskBytes,
+                specification.availableSwapBytes,
+                specPorts.map(_.port).toArray
+            )))
+        val container = req.flatMap(req => compositorWrapper.createContainerMonad(req))
+        val result = container.zipWith(req)
+            .flatMap((container, req) => {
+                val server = GameServer(
+                    id = 0,
+                    creationDate = Date.from(Instant.now()),
+                    owner = ObjectObservator(request.user),
+                    name = request.vmName,
+                    slug = request.vmSlug.toString(),
+                    ip = "",
+                    uuid = container.vmId,
+                    kind = request.game.name,
+                    version = "",
+                    location = ObjectObservator(request.location),
+                    isPublic = false,
+                    isActiveVm = false,
+                    isActiveServer = false,
+                    tariff = ObjectObservator(request.tariff),
+                    ports = DatabaseObservator(() => request.tariff.specification.get
+                        .flatMap(s => s.vmExposePorts.get)
+                        .flatMap(ps => ResultMonad(ps map { p => GameServerPort(
+                            id = p.id,
+                            creationDate = p.creationDate,
+                            port = Integer.parseInt(p.port.split("/")(0)),
+                            portKind = p.kind
+                        )}))
+                    ),
+                )
                 gameServerStorage.add(server)
             })
             .zipWith(container)
@@ -84,7 +112,7 @@ class CommonServersManagementService @Inject() (
         result
     }
 
-    override def updateVm(request: UpdateVmRequest): Monad[VmNotFound | Exception, UpdateVmResponse] = {
+    override def updateVm(request: UpdateVmRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid.equals(request.gameServerHash)} mapToMonad(VmNotFound()))
         val result = server.flatMap(s => {
@@ -95,7 +123,7 @@ class CommonServersManagementService @Inject() (
         result
     }
 
-    override def startVm(request: StartVmRequest): Monad[VmNotFound | Exception, StartVmResponse] = {
+    override def startVm(request: StartVmRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid.equals(request.gameServerHash)} mapToMonad(VmNotFound()))
         val startContainerReq = server.flatMap(s => compositorWrapper.startContainerMonad(s.uuid))
@@ -115,13 +143,19 @@ class CommonServersManagementService @Inject() (
                     onAttempt = a => log.info(s"Attempting to connect to controller of server ${s.slug}, attempt $a")
                 )
                 val controllerPort = if (searchRes.isDefined) searchRes.get.get else -1
-                val serializedControllerPort = GameServerPort()
-                serializedControllerPort.port = controllerPort
-                serializedControllerPort.portKind = "controller"
+                val serializedControllerPort = GameServerPort(
+                    id = 0,
+                    creationDate = Date(),
+                    port = controllerPort,
+                    portKind = "controller"
+                )
                 val ports = Array(serializedControllerPort) ++ (r.vmWhitePorts map { p => {
-                    val port = GameServerPort()
-                    port.portKind = "none"
-                    port.port = p.toInt
+                    val port = GameServerPort(
+                        id = 0,
+                        creationDate = Date(),
+                        portKind = "none",
+                        port = p.toInt
+                    )
                     port
                 }})
                 ResultMonad(ports)
@@ -129,7 +163,7 @@ class CommonServersManagementService @Inject() (
         val serverUpdated = startContainerReq.zipWith(ports, server)
             .flatMap((container, ports, server) => {
                 server.ip = container.vmWhiteIp
-                server.ports = ports
+                server.ports = ObjectObservator(ports.toSeq)
                 server.isActiveVm = true
                 gameServerStorage.update(server)
             })
@@ -146,29 +180,32 @@ class CommonServersManagementService @Inject() (
         result.flatMap(r => ResultMonad(StartVmResponse()))
     }
 
-    override def removeVm(request: RemoveVmRequest): Monad[VmNotFound | ContainerNotRemoved | Exception, RemoveVmResponse] = {
+    override def removeVm(request: RemoveVmRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid == request.gameServerHash} mapToMonad(VmNotFound()))
         val removedResponse = server.flatMap(s => compositorWrapper.removeContainerMonad(s.uuid))
         val result = server.zipWith(removedResponse)
-            .flatMap((server, _) => gameServerStorage.remove(server))
+            .flatMap((server, _) => gameServerStorage.removeById(server.id))
         result.flatMap(_ => ResultMonad(RemoveVmResponse()))
     }
 
-    override def restartVm(request: RestartVmRequest): Monad[VmNotFound | Exception, RestartVmResponse] = {
+    override def restartVm(request: RestartVmRequest) = {
         val stoppedVm = stopVm(StopVmRequest(request.user, request.gameServerHash))
         val startedVm = stoppedVm.flatMap(_ => startVm(StartVmRequest(request.user, request.gameServerHash)))
         startedVm.flatMap(_ => ResultMonad(RestartVmResponse()))
     }
 
-    override def startGameServer(request: StartGameServerRequest): Monad[VmNotFound | ErrorWhenStartingServer | Exception, StartGameServerResponse] = {
+    override def startGameServer(request: StartGameServerRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid == request.gameServerHash} mapToMonad(VmNotFound()))
-        val controllerClient = server.flatMap(s =>
+        val controllerClient = server.enrichWith(s => s.ports.get)
+        .flatMap((s, ports) =>
             ResultMonad(controllerClientFactory.getControllerClient(Settings(
                 controllerClientSettings.scheme,
                 s.ip,
-                s.ports.find(_.portKind.equalsIgnoreCase("controller")).getOrElse(GameServerPort()).port
+                ports.find(_.portKind.equalsIgnoreCase("controller")) match
+                    case None => 0
+                    case Some(p) => p.port
             )))
         )
         val result = controllerClient.flatMap(cc => {
@@ -182,14 +219,17 @@ class CommonServersManagementService @Inject() (
         result
     }
 
-    override def stopGameServer(request: StopGameServerRequest): Monad[VmNotFound| ErrorWhenStoppingServer | Exception, StopGameServerResponse] = {
+    override def stopGameServer(request: StopGameServerRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid == request.gameServerHash} mapToMonad(VmNotFound()))
-        val controllerClient = server.flatMap(s =>
+        val controllerClient = server.enrichWith(s => s.ports.get)
+        .flatMap((s, ports) =>
             ResultMonad(controllerClientFactory.getControllerClient(Settings(
                 controllerClientSettings.scheme,
                 s.ip,
-                s.ports.find(_.portKind.equalsIgnoreCase("controller")).getOrElse(GameServerPort()).port
+                ports.find(_.portKind.equalsIgnoreCase("controller")) match
+                    case None => 0
+                    case Some(p) => p.port
             )))
         )
         val result = controllerClient.flatMap(cc => {
@@ -200,7 +240,7 @@ class CommonServersManagementService @Inject() (
         result
     }
 
-    override def stopVm(request: StopVmRequest): Monad[VmNotFound | Exception, StopVmResponse] = {
+    override def stopVm(request: StopVmRequest) = {
         val servers = gameServerStorage.findServersByOwner(request.user)
         val server = servers.flatMap(s => s find {i => i.uuid.equals(request.gameServerHash)} mapToMonad(VmNotFound()))
         val stopServerResponse = server.flatMap(s => compositorWrapper.stopContainerMonad(s.uuid))

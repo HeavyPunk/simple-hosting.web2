@@ -1,74 +1,88 @@
 package controllers.v2.servers
 
-import controllers.v2.SimpleHostingController
 import com.google.inject.Inject
-import components.services.serializer.JsonService
-import play.api.mvc.ControllerComponents
-import components.clients.controller.ControllerClientFactory
-import io.github.heavypunk.controller.client.Settings
-import components.clients.compositor.CompositorClientWrapper
-import components.clients.compositor.CreateContainerRequest
-import components.clients.compositor.models.CreateServerResponse
+import components.basic.ErrorMonad
 import components.basic.ResultMonad
+import components.basic.mapToMonad
+import components.basic.serializeForLog
+import components.basic.zipWith
+import components.clients.compositor.CompositorClientWrapper
+import components.clients.compositor.ContainerNotCreated
+import components.clients.compositor.ContainerNotRemoved
+import components.clients.compositor.CreateContainerRequest
 import components.clients.compositor.models.CreateServerRequest
-import business.services.storages.tariffs.TariffStorage
-import components.basic.{ mapToMonad, zipWith }
-import java.util.UUID
-import java.time.Duration
-import business.entities.GameServer
-import business.services.storages.games.GamesStorage
-import business.services.storages.locations.LocationsStorage
-import business.services.storages.servers.GameServerStorage
+import components.clients.compositor.models.CreateServerResponse
+import components.clients.compositor.models.CreateVmWithGameServerRequest
+import components.clients.compositor.models.CreateVmWithGameServerResponse
+import components.clients.compositor.models.GetServersList
+import components.clients.compositor.models.GetUserServersRequest
+import components.clients.compositor.models.PortDescription
+import components.clients.compositor.models.RemoveServerRequest
+import components.clients.compositor.models.RemoveServerResponse
+import components.clients.compositor.models.ServerInfo
+import components.clients.compositor.models.StartServerResponse
+import components.clients.compositor.models.StartVmRequest
+import components.clients.compositor.models.StopServerRequest
+import components.clients.compositor.models.StopServerResponse
+import components.clients.compositor.models.StopVmWithGameServerRequest
+import components.clients.compositor.models.UpdateServerRequest
+import components.clients.controller.ControllerClientFactory
+import components.clients.controller.ControllerUtils
+import components.clients.controller.GetServerInfoRequest
+import components.clients.controller.GetServerLogsOnPageRequest
+import components.clients.controller.SendServerMessageRequest
+import components.clients.controller.StartGameServerRequest
+import components.clients.controller.StopGameServerRequest
+import components.services.business.servers.CreateVmRequest
+import components.services.business.servers.RemoveVmRequest
+import components.services.business.servers.RestartVmRequest
+import components.services.business.servers.ServersManagementService
+import components.services.business.servers.StopVmRequest
+import components.services.business.servers.UpdateVmRequest
+import components.services.business.servers.VmNotFound
+import components.services.log.Log
+import components.services.retrier.Retrier
+import components.services.serializer.JsonService
 import controllers.v2.JsonCannotBeParsed
 import controllers.v2.JsonNotFoundForRequestBody
 import controllers.v2.RequestBodyNotFound
-import business.services.storages.tariffs.TariffNotFoundException
-import business.services.storages.users.UserNotFoundException
-import business.services.storages.games.GameNotFoundException
-import business.services.storages.locations.LocationNotFoundException
+import controllers.v2.SimpleHostingController
 import controllers.v2.UserNotFoundForRequest
-import components.clients.compositor.models.StartVmRequest
-import components.services.retrier.Retrier
-import components.clients.controller.ControllerUtils
-import components.services.log.Log
-import business.entities.GameServerPort
-import components.clients.compositor.models.StartServerResponse
-import components.clients.compositor.models.PortDescription
-import scala.collection.immutable.ArraySeq
-import business.services.storages.servers.GameServerNotFoundException
-import components.basic.serializeForLog
-import components.clients.compositor.models.StopServerRequest
-import components.clients.compositor.models.StopServerResponse
-import components.clients.compositor.models.UpdateServerRequest
-import components.clients.compositor.models.RemoveServerRequest
-import components.clients.compositor.models.RemoveServerResponse
-import components.clients.compositor.ContainerNotRemoved
-import components.clients.compositor.ContainerNotCreated
-import components.basic.ErrorMonad
-import components.clients.compositor.models.ServerInfo
-import components.clients.compositor.models.GetUserServersRequest
-import components.clients.compositor.models.GetServersList
-import components.clients.controller.GetServerLogsOnPageRequest
+import io.github.heavypunk.controller.client.Settings
+import io.github.heavypunk.controller.client.contracts.server.GetServerInfoResponse
 import io.github.heavypunk.controller.client.contracts.server.GetServerLogsRequest
 import io.github.heavypunk.controller.client.contracts.server.GetServerLogsResponse
-import components.clients.controller.SendServerMessageRequest
 import io.github.heavypunk.controller.client.contracts.server.SendMessageRequest
 import io.github.heavypunk.controller.client.contracts.server.SendMessageResponse
-import io.github.heavypunk.controller.client.contracts.server.GetServerInfoResponse
-import components.clients.controller.GetServerInfoRequest
-import components.clients.controller.StartGameServerRequest
 import io.github.heavypunk.controller.client.contracts.server.StartServerRequest
-import components.clients.controller.StopGameServerRequest
-import components.services.business.servers.ServersManagementService
-import components.services.business.servers.CreateVmRequest
-import components.services.business.servers.StopVmRequest
-import components.services.business.servers.UpdateVmRequest
-import components.services.business.servers.RemoveVmRequest
-import components.services.business.servers.VmNotFound
-import components.clients.compositor.models.CreateVmWithGameServerRequest
-import components.clients.compositor.models.CreateVmWithGameServerResponse
-import components.clients.compositor.models.StopVmWithGameServerRequest
-import components.services.business.servers.RestartVmRequest
+import play.api.mvc.ControllerComponents
+
+import java.time.Duration
+import java.util.UUID
+import scala.collection.immutable.ArraySeq
+import business.services.slickStorages.tariff.{
+    TariffStorage,
+    TariffNotFound,
+    findById => findTariffById,
+}
+import business.services.slickStorages.games.{
+    GamesStorage,
+    GameNotFound,
+    findById => findGameById,
+}
+import business.services.slickStorages.locations.{
+    LocationsStorage,
+    LocationNotFound,
+    findById => findLocationById,
+}
+import business.services.slickStorages.servers.{
+    GameServersStorage,
+    GameServerNotFound,
+    findPublicServers,
+    findServersByOwner,
+    findByHash,
+}
+import business.services.slickStorages.user.UserNotFound
 
 class TariffHasInvalidFormat
 class AccessDenied
@@ -86,7 +100,7 @@ class GameServerControlControllerV2 @Inject() (
     val tariffStorage: TariffStorage,
     val gamesStorage: GamesStorage,
     val locationsStorage: LocationsStorage,
-    val gameServerStorage: GameServerStorage,
+    val gameServerStorage: GameServersStorage,
     val jsonizer: JsonService,
     val log: Log
 ) extends SimpleHostingController(jsonizer) {
@@ -106,7 +120,7 @@ class GameServerControlControllerV2 @Inject() (
                 vmSlug,
                 user,
                 game,
-                location
+                location,
             )))
         val vmStarted = vmCreated.zipWith(user)
             .flatMap((vmCreated, user) => serversManagementService.startVm(components.services.business.servers.StartVmRequest(
@@ -128,10 +142,11 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("JSON in body not found")))
                 case _: RequestBodyNotFound => wrapToFuture(BadRequest(serializeError("Request body not found")))
                 case _: TariffHasInvalidFormat => wrapToFuture(BadRequest(serializeError("Tariff id has invalid format")))
-                case _: TariffNotFoundException => wrapToFuture(NotFound(serializeError("Tariff not found")))
+                case _: TariffNotFound => wrapToFuture(NotFound(serializeError("Tariff not found")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("User not found for request")))
-                case _: GameNotFoundException => wrapToFuture(NotFound(serializeError("Game not found")))
-                case _: LocationNotFoundException => wrapToFuture(NotFound(serializeError("Location not found")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: GameNotFound => wrapToFuture(NotFound(serializeError("Game not found")))
+                case _: LocationNotFound => wrapToFuture(NotFound(serializeError("Location not found")))
                 case _: ContainerNotCreated => wrapToFuture(InternalServerError(serializeError("InternalServerError")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case e: ErrorWhenStartingServer => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
@@ -165,6 +180,9 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("User not found for request body")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case e: ErrorWhenStoppingServer => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
@@ -187,7 +205,7 @@ class GameServerControlControllerV2 @Inject() (
                 vmSlug,
                 user,
                 game,
-                location
+                location,
             )))
         
         val (err, r) = result.tryGetValue
@@ -197,10 +215,11 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("JSON in body not found")))
                 case _: RequestBodyNotFound => wrapToFuture(BadRequest(serializeError("Request body not found")))
                 case _: TariffHasInvalidFormat => wrapToFuture(BadRequest(serializeError("Tariff id has invalid format")))
-                case _: TariffNotFoundException => wrapToFuture(NotFound(serializeError("Tariff not found")))
+                case _: TariffNotFound => wrapToFuture(NotFound(serializeError("Tariff not found")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("User not found for request")))
-                case _: GameNotFoundException => wrapToFuture(NotFound(serializeError("Game not found")))
-                case _: LocationNotFoundException => wrapToFuture(NotFound(serializeError("Location not found")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: GameNotFound => wrapToFuture(NotFound(serializeError("Game not found")))
+                case _: LocationNotFound => wrapToFuture(NotFound(serializeError("Location not found")))
                 case _: ContainerNotCreated => wrapToFuture(InternalServerError(serializeError("InternalServerError")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError(serializeError("InternalServerError")))
         else wrapToFuture(Ok(jsonizer.serialize(CreateServerResponse(r.container.vmId, true, ""))))
@@ -224,6 +243,9 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("User not found for request body")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(jsonizer.serialize(startServerResponse)))
@@ -244,6 +266,9 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("User not found for request body")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(jsonizer.serialize(resp)))
@@ -261,6 +286,9 @@ class GameServerControlControllerV2 @Inject() (
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Server not found. Maybe you don't have access to this server")))
                 case _: ContainerNotRemoved => wrapToFuture(InternalServerError(("Remove server error")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(""))
     }}
@@ -296,6 +324,9 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Server not found. Maybe you don't have access to this server")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok)
@@ -309,16 +340,17 @@ class GameServerControlControllerV2 @Inject() (
                 gameServerStorage.findPublicServers(r.kind)
             else gameServerStorage.findServersByOwner(u)
         })
+        .flatMap(servers => ResultMonad(servers.map(s => (s, s.ports.get.tryGetValue._2))))
         .flatMap(servers => ResultMonad(GetServersList(servers map { s => ServerInfo(
-            s.uuid,
-            s.name,
-            s.kind,
-            s.ip,
-            s.ports,
+            s._1.uuid,
+            s._1.name,
+            s._1.kind,
+            s._1.ip,
+            s._2.toArray,
             ControllerUtils.checkForServerRunning(controllerClientFactory, Settings(
                 controllerClientSettings.scheme,
                 controllerClientSettings.host,
-                s.ports.find(_.portKind.equals("controller")).getOrElse(GameServerPort()).port
+                s._2.find(_.portKind.equals("controller")).get.port
             ))
         )})))
 
@@ -340,21 +372,21 @@ class GameServerControlControllerV2 @Inject() (
             .flatMap((s, u) => {
                 if (s.isPublic)
                     ResultMonad(s)
-                else if (s.owner.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied())
+                else if (s.owner.get.tryGetValue._2.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied())
             })
             .flatMap(s => ResultMonad(ServerInfo(
                 s.uuid,
                 s.name,
                 s.kind,
                 s.ip,
-                s.ports,
+                s.ports.get.tryGetValue._2.toArray,
                 s.isActiveServer
             )))
         
         val (err, serv) = result.tryGetValue
         if (err != null)
             err match
-                case _: GameServerNotFoundException => wrapToFuture(BadRequest(serializeError("Game server not found")))
+                case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
                 case e: Exception => wrapToFuture(InternalServerError(serializeError("InternalServerError")))
@@ -416,13 +448,13 @@ class GameServerControlControllerV2 @Inject() (
         val gameServer = req.flatMap(r => gameServerStorage.findByHash(r.gameServerHash))
         val user = findUserForCurrentRequest(request)
         val grantedGameServer = gameServer.zipWith(user)
-            .flatMap((s, u) => if (s.owner.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
+            .flatMap((s, u) => if (s.owner.get.tryGetValue._2.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
         
         val controllerClient = grantedGameServer.flatMap(s =>
             ResultMonad(controllerClientFactory.getControllerClient(Settings(
                 controllerClientSettings.scheme,
                 s.ip,
-                s.ports.find(_.portKind.equalsIgnoreCase("controller")).getOrElse(GameServerPort()).port
+                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
         )
         val result = controllerClient.zipWith(req)
@@ -441,7 +473,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
-                case _: GameServerNotFoundException => wrapToFuture(BadRequest(serializeError("Game server not found")))
+                case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
                 case e: ErrorWhenGettingServerInfo => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
@@ -453,13 +485,13 @@ class GameServerControlControllerV2 @Inject() (
         val gameServer = req.flatMap(r => gameServerStorage.findByHash(r.gameServerHash))
         val user = findUserForCurrentRequest(request)
         val grantedGameServer = gameServer.zipWith(user)
-            .flatMap((s, u) => if (s.owner.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
+            .flatMap((s, u) => if (s.owner.get.tryGetValue._2.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
         
         val controllerClient = grantedGameServer.flatMap(s =>
             ResultMonad(controllerClientFactory.getControllerClient(Settings(
                 controllerClientSettings.scheme,
                 s.ip,
-                s.ports.find(_.portKind.equalsIgnoreCase("controller")).getOrElse(GameServerPort()).port
+                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
         )
         val result = controllerClient.zipWith(req)
@@ -479,7 +511,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
-                case _: GameServerNotFoundException => wrapToFuture(BadRequest(serializeError("Game server not found")))
+                case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
                 case e: ErrorWhenSendingMessageToServer => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
@@ -493,7 +525,7 @@ class GameServerControlControllerV2 @Inject() (
             .flatMap(r => gameServerStorage.findByHash(r.gameServerHash))
         val grantedGameServer = gameServer.zipWith(user)
             .flatMap((s, u) => {
-                if (s.owner.id == u.id)
+                if (s.owner.get.tryGetValue._2.id == u.id)
                     ResultMonad(s)
                 else ErrorMonad(AccessDenied())
             })
@@ -502,7 +534,7 @@ class GameServerControlControllerV2 @Inject() (
             ResultMonad(controllerClientFactory.getControllerClient(Settings(
                 controllerClientSettings.scheme,
                 s.ip,
-                s.ports.find(_.portKind.equalsIgnoreCase("controller")).getOrElse(GameServerPort()).port
+                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
         )
         val result = controllerClient.zipWith(req)
@@ -519,7 +551,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("Json not found for request body")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("JSON cannot be parsed")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
-                case _: GameServerNotFoundException => wrapToFuture(BadRequest(serializeError("Game server not found")))
+                case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
                 case e: ErrorWhenGettingLogs => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))

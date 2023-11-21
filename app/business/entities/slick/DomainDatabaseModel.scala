@@ -1,10 +1,11 @@
 package business.entities.slick
 
 import slick.jdbc.PostgresProfile.api._
-import java.util.Date
-import java.time.Instant
 import slick.lifted.ProvenShape
 import slick.model.ForeignKeyAction
+
+import java.time.Instant
+import java.util.Date
 
 class UsersTable(tag: Tag) extends Table[DatabaseUser](tag, "users") {
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -74,7 +75,7 @@ class GameServerPortsTable(tag: Tag) extends Table[DatabaseGameServerPort](tag, 
   def gameServerId = column[Long]("game_server_id")
 
   def gameServerFK = foreignKey("PORT_SERVER_FK", gameServerId, TableQuery[GameServerTable])(_.id, onDelete = ForeignKeyAction.Cascade)
-  def * = (id, creationDate, port, portKind, gameServerId).mapTo[DatabaseGameServerPort]
+  def * = (id, creationDate, gameServerId, port, portKind).mapTo[DatabaseGameServerPort]
 }
 
 class HostsTable(tag: Tag) extends Table[DatabaseHost](tag, "host") {

@@ -1,7 +1,7 @@
 package components.services.business.servers
 
 import java.util.UUID
-import business.entities.{
+import business.entities.newEntity.{
     User,
     Location,
     Game,

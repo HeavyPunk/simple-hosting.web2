@@ -1,62 +1,67 @@
 package business.services.slickStorages.servers
 
+import business.entities.DatabaseObservator
+import business.entities.newEntity.Game
+import business.entities.newEntity.GameServer
+import business.entities.newEntity.GameServerPort
+import business.entities.newEntity.Location
+import business.entities.newEntity.Tariff
+import business.entities.newEntity.TariffSpecification
+import business.entities.newEntity.User
+import business.entities.newEntity.UserSession
+import business.entities.slick.DatabaseGameServer
+import business.entities.slick.DatabaseGameServerPort
+import business.entities.slick.GameServerPortsTable
+import business.entities.slick.GameServerTable
+import business.entities.slick.GamesTable
+import business.entities.slick.HostsTable
+import business.entities.slick.LocationsTable
+import business.entities.slick.TariffSpecificationPortsTable
+import business.entities.slick.TariffSpecificationsTable
+import business.entities.slick.TariffsTable
+import business.entities.slick.UserSessionsTable
+import business.entities.slick.UsersTable
 import business.services.slickStorages.BaseStorage
-import business.entities.newEntity.{
-    GameServer,
-    User,
-    UserSession,
-    Game,
-    Tariff,
-    Location
-}
-import business.entities.slick.{
-    GameServerTable,
-    DatabaseGameServer,
-    GameServerPortsTable,
-    DatabaseGameServerPort,
-    HostsTable,
-    LocationsTable,
-    TariffsTable,
-    UsersTable,
-    UserSessionsTable,
-    TariffSpecificationPortsTable,
-    GamesTable,
-    TariffSpecificationsTable
-}
+import business.services.slickStorages.games.GamesStorage
+import business.services.slickStorages.games.{findById => findGameById}
+import business.services.slickStorages.locations.LocationNotFound
+import business.services.slickStorages.tariff.TariffNotFound
+import business.services.slickStorages.tariff.TariffStorage
+import business.services.slickStorages.user.UserNotFound
+import business.services.slickStorages.user.UserStorage
+import components.basic.ErrorMonad
+import components.basic.Monad
+import components.basic.ResultMonad
+import components.basic.mapToMonad
+import components.basic.zipWith
+import components.clients.curseforge.ApiPaths.description
+import org.checkerframework.checker.units.qual.m
 import slick.jdbc.PostgresProfile.api._
-import scala.concurrent.duration.Duration
-import components.basic.{
-    Monad,
-    ErrorMonad,
-    ResultMonad,
-    mapToMonad
-}
 import slick.lifted.Rep
-import scala.concurrent.Await
+
+import java.time.Instant
 import java.util.Date
 import java.util.UUID
-import components.clients.curseforge.ApiPaths.description
-import business.entities.newEntity.TariffSpecification
-import business.services.slickStorages.user.UserStorage
-import org.checkerframework.checker.units.qual.m
-import business.entities.DatabaseObservator
-import business.services.slickStorages.tariff.{
-    TariffStorage,
-    TariffNotFound,
-}
-import business.entities.newEntity.GameServerPort
-import java.time.Instant
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class GameServerNotFound
-class LocationNotFound
 
-trait GameServersStorage extends BaseStorage[GameServer, GameServerTable, GameServerNotFound]
+trait GameServersStorage extends BaseStorage[
+    GameServer,
+    GameServerTable,
+    LocationNotFound | UserNotFound | TariffNotFound | Exception,
+    LocationNotFound | UserNotFound | TariffNotFound | Exception,
+    Exception,
+    Exception
+]
 
 class SlickGameServersStorage(
     db: Database,
     operationTimeout: Duration,
     userStorage: UserStorage,
     tariffStorage: TariffStorage,
+    gamesStorage: GamesStorage,
 ) extends GameServersStorage{
     override def create(modifier: GameServer => Unit = null): GameServer = {
         val creationDate = Date.from(Instant.now())
@@ -70,7 +75,6 @@ class SlickGameServersStorage(
             uuid = "",
             kind = "",
             version = "",
-            game = null,
             location = null,
             isPublic = false,
             isActiveVm = false,
@@ -83,73 +87,93 @@ class SlickGameServersStorage(
         gameServer
     }
 
-    override def add(item: GameServer): Monad[Exception, Boolean] = {
-        val databaseServer = DatabaseGameServer(
-            0,
-            item.creationDate.toGMTString(),
-            item.owner.get.tryGetValue._2.id,
-            item.name,
-            item.slug,
-            item.ip,
-            item.uuid,
-            item.kind,
-            item.version,
-            item.location.get.tryGetValue._2.id,
-            item.isPublic,
-            item.isActiveVm,
-            item.isActiveServer,
-            item.tariff.get.tryGetValue._2.id,
-        )
-        val databaseServerPorts = item.ports.get.tryGetValue._2 map {i => DatabaseGameServerPort(
-            0, i.creationDate.toGMTString(), item.id, i.port, i.portKind
-        )}
+    override def add(item: GameServer): Monad[LocationNotFound | UserNotFound | TariffNotFound | Exception, Boolean] =
+        item.location.get.zipWith(item.owner.get, item.tariff.get, item.ports.get)
+        .flatMap((location, owner, tariff, ports) => {
+            val databaseServer = DatabaseGameServer(
+                0,
+                item.creationDate.toGMTString(),
+                owner.id,
+                item.name,
+                item.slug,
+                item.ip,
+                item.uuid,
+                item.kind,
+                item.version,
+                location.id,
+                item.isPublic,
+                item.isActiveVm,
+                item.isActiveServer,
+                tariff.id,
+            )
+            
+            try {
+                val serversTable = TableQuery[GameServerTable]
+                val portsTable = TableQuery[GameServerPortsTable]
+                val addServerAction = serversTable returning serversTable.map(_.id) += databaseServer
+                val serverId = Await.result(db.run(addServerAction), operationTimeout)
 
-        try {
-            val serversTable = TableQuery[GameServerTable]
-            val portsTable = TableQuery[GameServerPortsTable]
-            val addServerAction = serversTable += databaseServer
-            val addPortsAction = portsTable ++= databaseServerPorts
-            Await.result(db.run(addServerAction andThen addPortsAction), operationTimeout)
-            ResultMonad(true)
-        } catch {
-            case e: Exception => ErrorMonad(e)
-        }
-    }
+                val databaseServerPorts = ports map {i => DatabaseGameServerPort(
+                    0, i.creationDate.toGMTString(), serverId, i.port, i.portKind
+                )}
 
-    override def update(item: GameServer): Monad[Exception, Boolean] = {
-        val databaseServer = DatabaseGameServer(
-            item.id,
-            item.creationDate.toGMTString(),
-            item.owner.get.tryGetValue._2.id,
-            item.name,
-            item.slug,
-            item.ip,
-            item.uuid,
-            item.kind,
-            item.version,
-            item.location.get.tryGetValue._2.id,
-            item.isPublic,
-            item.isActiveVm,
-            item.isActiveServer,
-            item.tariff.get.tryGetValue._2.id,
-        )
-        val databaseServerPorts = item.ports.get.tryGetValue._2 map {i => DatabaseGameServerPort(
-            i.id, i.creationDate.toGMTString(), item.id, i.port, i.portKind
-        )}
+                val addPortsAction = portsTable ++= databaseServerPorts
+                Await.result(db.run(addPortsAction), operationTimeout)
+                ResultMonad(true)
+            } catch {
+                case e: Exception => ErrorMonad(e)
+            }
+        })
+    
 
-        try {
-            val serversTable = TableQuery[GameServerTable]
-            val portsTable = TableQuery[GameServerPortsTable]
-            val updateServerAction = serversTable filter {_.id === databaseServer.id} update databaseServer
-            val updatePortsActions = DBIO.sequence(databaseServerPorts map {p => portsTable filter {_.id === p.id} update p})
-            Await.result(db.run(updateServerAction andThen updatePortsActions), operationTimeout)
-            ResultMonad(true)
-        } catch {
-            case e: Exception => ErrorMonad(e)
-        }
-    }
+    override def update(item: GameServer): Monad[LocationNotFound | UserNotFound | TariffNotFound | Exception, Boolean] =
+        item.owner.get.zipWith(item.location.get, item.tariff.get, item.ports.get)
+        .flatMap((owner, location, tariff, ports) => {
+            val databaseServer = DatabaseGameServer(
+                item.id,
+                item.creationDate.toGMTString(),
+                owner.id,
+                item.name,
+                item.slug,
+                item.ip,
+                item.uuid,
+                item.kind,
+                item.version,
+                location.id,
+                item.isPublic,
+                item.isActiveVm,
+                item.isActiveServer,
+                tariff.id
+            )
+            val databaseServerPorts = ports map {i => DatabaseGameServerPort(
+                i.id, i.creationDate.toGMTString(), item.id, i.port, i.portKind
+            )}
 
-    override def find(predicate: GameServerTable => Rep[Boolean]): Monad[Exception | GameServerNotFound, Seq[GameServer]] = {
+            try {
+                val serversTable = TableQuery[GameServerTable]
+                val portsTable = TableQuery[GameServerPortsTable]
+                val updateServerAction = serversTable filter {_.id === databaseServer.id} update databaseServer
+                Await.result(db.run(updateServerAction), operationTimeout)
+                if (item.ports.initialized)
+                {
+                    val ports = item.ports.get.tryGetValue._2
+                    val removeOldPortsAction = portsTable.filter(_.gameServerId === item.id).delete
+                    val addNewPortsAction = portsTable ++= ports.map {p => DatabaseGameServerPort(
+                        id = 0,
+                        creationDate = p.creationDate.toGMTString(),
+                        gameServerId = item.id,
+                        port = p.port,
+                        portKind = p.portKind
+                    )}
+                    Await.result(db.run(removeOldPortsAction andThen addNewPortsAction), operationTimeout)
+                }
+                ResultMonad(true)
+            } catch {
+                case e: Exception => ErrorMonad(e)
+            }
+        })
+
+    override def find(predicate: GameServerTable => Rep[Boolean]): Monad[Exception, Seq[GameServer]] = {
         val gameServers = TableQuery[GameServerTable]
         try {
             val action = gameServers filter(predicate)
@@ -164,13 +188,6 @@ class SlickGameServersStorage(
                 uuid = ser.uuid,
                 kind = ser.kind,
                 version = ser.version,
-                game = DatabaseObservator(() => {
-                    try {
-                        ???
-                    } catch {
-                        case e: Exception => ErrorMonad(e)
-                    }
-                }),
                 location = DatabaseObservator(() => {
                     try {
                         val locations = TableQuery[LocationsTable]
@@ -232,5 +249,11 @@ extension (storage: GameServersStorage){
         storage.find(s => s.id === id).flatMap(s => if s.length == 0 then ErrorMonad(GameServerNotFound()) else ResultMonad(s.head))
     def findByName(name: String): Monad[GameServerNotFound | Exception, GameServer] = 
         storage.find(s => s.name === name).flatMap(s => if s.length == 0 then ErrorMonad(GameServerNotFound()) else ResultMonad(s.head))
+    def findServersByOwner(owner: User): Monad[Exception, Seq[GameServer]] =
+        storage.find(s => s.ownerId === owner.id)
+    def findPublicServers(kind: String): Monad[Exception, Seq[GameServer]] = ???
+    def findByHash(hash: String): Monad[GameServerNotFound | Exception, GameServer] =
+        storage.find(s => s.uuid === hash).flatMap(s => if s.isEmpty then ErrorMonad(GameServerNotFound()) else ResultMonad(s.head))
+    def removeById(serverId: Long): Monad[Exception, Boolean] = ???
     def removeAll(): Monad[Exception, Boolean] = storage.remove(st => st.id =!= 0L)
 }

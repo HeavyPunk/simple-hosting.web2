@@ -1,13 +1,15 @@
 package business.entities.newEntity
 
-import java.util.Date
-import components.clients.curseforge.ApiPaths.description
-import java.util.UUID
+import business.entities.Observator
+import business.services.slickStorages.games.GameNotFound
+import business.services.slickStorages.locations.LocationNotFound
+import business.services.slickStorages.tariff.TariffNotFound
 import business.services.slickStorages.user.UserNotFound
 import components.basic.Monad
-import business.services.slickStorages.servers.LocationNotFound
-import business.entities.Observator
-import business.services.slickStorages.tariff.TariffNotFound
+import components.clients.curseforge.ApiPaths.description
+
+import java.util.Date
+import java.util.UUID
 
 case class User(
     val id: Long,
@@ -23,7 +25,7 @@ case class User(
 
 case class UserSession(
     val id: Long,
-    val creationDate: Date,
+    var creationDate: Date,
     var token: UUID,
     var data: Option[String]
 )
@@ -38,13 +40,12 @@ case class GameServer(
     var uuid: String,
     val kind: String,
     val version: String,
-    val game: Observator[Exception, Game],
     var location: Observator[Exception | LocationNotFound, Location],
     var isPublic: Boolean,
     var isActiveVm: Boolean,
     var isActiveServer: Boolean,
     val tariff: Observator[Exception | TariffNotFound, Tariff],
-    val ports: Observator[Exception, Seq[GameServerPort]]
+    var ports: Observator[Exception, Seq[GameServerPort]]
 )
 
 case class Host(
@@ -96,13 +97,14 @@ case class Tariff(
     val creationDate: Date,
     val name: String,
     val description: String,
-    val game: Observator[Exception, Game],
+    val game: Observator[Exception | GameNotFound, Game],
     val specification: Observator[Exception, TariffSpecification]
 )
 
 case class TariffSpecification(
     val id: Long,
     val creationDate: Date,
+    val imageUri: String,
     val monthPrice: Double,
     val isPricePerPlayer: Boolean,
     val isMemoryPerSlot: Boolean,

@@ -1,30 +1,59 @@
 package business.services.slickStorages.locations
 
-import slick.jdbc.PostgresProfile.api._
-import business.services.slickStorages.BaseStorage
-import business.entities.slick.LocationsTable
 import business.entities.newEntity.Location
+import business.entities.slick.DatabaseLocation
+import business.entities.slick.LocationsTable
+import business.services.slickStorages.BaseStorage
+import components.basic.ErrorMonad
 import components.basic.Monad
+import components.basic.ResultMonad
+import slick.jdbc.PostgresProfile.api._
 import slick.lifted.Rep
 import slick.lifted.TableQuery
+
+import java.util.Date
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import java.util.Date
-import components.basic.{
-    ErrorMonad,
-    ResultMonad,
-}
 
 class LocationNotFound
 
-trait LocationsStorage extends BaseStorage[Location, LocationsTable, LocationNotFound]
+trait LocationsStorage extends BaseStorage[Location, LocationsTable, Exception, Exception, Exception, Exception]
 
 class SlickLocationsStorage(db: Database, operationTimeout: Duration) extends LocationsStorage {
     override def create(modifier: Location => Unit = null): Location = ???
-    override def add(item: Location): Monad[Exception, Boolean] = ???
-    override def update(item: Location): Monad[Exception, Boolean] = ???
-    override def find(predicate: LocationsTable => Rep[Boolean]): Monad[Exception | LocationNotFound, Seq[Location]] = {
-
+    override def add(item: Location): Monad[Exception, Boolean] = {
+        try {
+            val locations = TableQuery[LocationsTable]
+            val databaseLocation = DatabaseLocation(
+                id = 0,
+                creationDate = item.creationDate.toGMTString(),
+                name = item.name,
+                description = item.description,
+                testIp = item.testIp,
+            )
+            Await.result(db.run(locations += databaseLocation), operationTimeout)
+            ResultMonad(true)
+        } catch {
+            case e: Exception => ErrorMonad(e)
+        }
+    }
+    override def update(item: Location): Monad[Exception, Boolean] = {
+        try {
+            val locations = TableQuery[LocationsTable]
+            val databaseLocation = DatabaseLocation(
+                id = item.id,
+                creationDate = item.creationDate.toGMTString(),
+                name = item.name,
+                description = item.description,
+                testIp = item.testIp,
+            )
+            Await.result(db.run(locations.update(databaseLocation)), operationTimeout)
+            ResultMonad(true)
+        } catch {
+            case e: Exception => ErrorMonad(e)
+        }
+    }
+    override def find(predicate: LocationsTable => Rep[Boolean]): Monad[Exception, Seq[Location]] = {
         try {
             val locations = TableQuery[LocationsTable]
             val location = Await.result(db.run((locations filter(predicate)).result), operationTimeout)
@@ -40,5 +69,17 @@ class SlickLocationsStorage(db: Database, operationTimeout: Duration) extends Lo
             case e: Exception => ErrorMonad(e)
         }
     }
-    override def remove(predicate: LocationsTable => Rep[Boolean]): Monad[Exception, Boolean] = ???
+    override def remove(predicate: LocationsTable => Rep[Boolean]): Monad[Exception, Boolean] = {
+        try {
+            val locations = TableQuery[LocationsTable]
+            Await.result(db.run((locations filter(predicate)).delete), operationTimeout)
+            ResultMonad(true)
+        } catch {
+            case e: Exception => ErrorMonad(e)
+        }
+    }
 }
+
+extension (storage: LocationsStorage)
+    def findById(id: Long): Monad[LocationNotFound | Exception, Location] =
+        storage.find(_.id === id).flatMap(ls => if ls.isEmpty then ErrorMonad(LocationNotFound()) else ResultMonad(ls.head))

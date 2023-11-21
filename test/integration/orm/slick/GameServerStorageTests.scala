@@ -1,32 +1,47 @@
 package integration.orm.slick
 
-import slick.jdbc.PostgresProfile.api._
-import scala.concurrent.duration.Duration
-import components.services.database.SlickDatabaseInitializer
-import business.services.slickStorages.servers.SlickGameServersStorage
-import play.api.inject.guice.GuiceApplicationBuilder
-import business.services.slickStorages.servers.{
-    GameServersStorage,
-    removeAll
-}
-import business.entities.newEntity.{
-    GameServer,
-    User,
-    UserSession,
-}
-import java.util.Date
-import java.time.Instant
-import business.entities.ObjectObservator
-import business.services.slickStorages.user.UserStorage
-import components.services.hasher.PasswordHasher
-import java.util.UUID
-import business.services.slickStorages.user.findByLogin
-import business.entities.newEntity.Location
-import business.entities.newEntity.Game
-import business.services.slickStorages.tariff.TariffStorage
-import components.clients.curseforge.ApiPaths.description
-import business.services.slickStorages.tariff.findById
 import business.entities.DatabaseObservator
+import business.entities.ObjectObservator
+import business.entities.newEntity.Game
+import business.entities.newEntity.GameServer
+import business.entities.newEntity.Location
+import business.entities.newEntity.Tariff
+import business.entities.newEntity.TariffSpecification
+import business.entities.newEntity.TariffSpecificationPort
+import business.entities.newEntity.User
+import business.entities.newEntity.UserSession
+import business.services.slickStorages.games.GamesStorage
+import business.services.slickStorages.games.{findById => findGameById}
+import business.services.slickStorages.locations.LocationsStorage
+import business.services.slickStorages.locations.{findById => findLocationById}
+import business.services.slickStorages.servers.GameServersStorage
+import business.services.slickStorages.servers.SlickGameServersStorage
+import business.services.slickStorages.servers.findByHash
+import business.services.slickStorages.servers.findByName
+import business.services.slickStorages.servers.removeAll
+import business.services.slickStorages.tariff.TariffStorage
+import business.services.slickStorages.tariff.findById
+import business.services.slickStorages.user.UserStorage
+import business.services.slickStorages.user.findByLogin
+import components.basic.zipWith
+import components.clients.curseforge.ApiPaths.description
+import components.services.database.SlickDatabaseInitializer
+import components.services.hasher.PasswordHasher
+import org.checkerframework.checker.units.qual.m
+import play.api.inject.guice.GuiceApplicationBuilder
+import slick.jdbc.PostgresProfile.api._
+
+import java.time.Instant
+import java.util.Date
+import java.util.UUID
+import scala.concurrent.duration.Duration
+import components.basic.ErrorMonad
+import business.services.slickStorages.games.GameNotFound
+import components.basic.ResultMonad
+import business.services.slickStorages.locations.LocationNotFound
+import business.services.slickStorages.tariff.TariffNotFound
+import business.services.slickStorages.tariff.{findById => findTariffById}
+import business.entities.newEntity.GameServerPort
 
 class GameServerStorageTests extends munit.FunSuite{
     var db: Database = null
@@ -60,11 +75,83 @@ class GameServerStorageTests extends munit.FunSuite{
             .flatMap(_ => userStorage.findByLogin(login))
     }
 
+    def addOrUpdateDefaultGame(gamesStorage: GamesStorage) =
+        val game = Game(
+                    id = 1,
+                    creationDate = Date.from(Instant.now()),
+                    name = "Default-game",
+                    description = "Default game",
+                    iconUri = "",
+                    tariffs = ObjectObservator(Seq.empty)
+                )
+        (gamesStorage.findGameById(1) match
+            case _: ErrorMonad[GameNotFound, _] => gamesStorage.add(game)
+            case _: ResultMonad[_, _] => gamesStorage.update(game))
+        .flatMap(_ => gamesStorage.findGameById(1))
+
+    def addOrUpdateDefaultLocationToDatabase(locationsStorage: LocationsStorage) = {
+        val location = Location(
+            1,
+            creationDate = Date.from(Instant.now()),
+            name = "Default",
+            description = "Yandex, Russia",
+            testIp = "127.0.0.1"
+        )
+        (locationsStorage.findLocationById(1) match
+            case _: ErrorMonad[LocationNotFound, _] => locationsStorage.add(location)
+            case _: ResultMonad[_, _] => locationsStorage.update(location))
+        .flatMap(_ => locationsStorage.findLocationById(1))
+    }
+
+    def addOrUpdateDefaultTariffToDatabase(tariffStorage: TariffStorage, gamesStorage: GamesStorage) = {
+        val tariff = Tariff(
+            id = 1,
+            creationDate = Date.from(Instant.now()),
+            name = "Default",
+            description = "Test tariff",
+            game = DatabaseObservator(() => gamesStorage.findGameById(1)),
+            specification = ObjectObservator(TariffSpecification(
+                id = 1,
+                creationDate = Date.from(Instant.now()),
+                imageUri = "image",
+                monthPrice = 1.0,
+                isPricePerPlayer = false,
+                isMemoryPerSlot = false,
+                isCpuPerSlot = false,
+                minSlots = 0,
+                maxSlots = 100,
+                availableDiskBytes = 1,
+                availableRamBytes = 1,
+                availableSwapBytes = 1,
+                availableCpu = 1,
+                vmExposePorts = ObjectObservator(Seq(TariffSpecificationPort(
+                    id = 1,
+                    creationDate = Date.from(Instant.now()),
+                    port = "10000",
+                    kind = "some-game"
+                ))),
+                cpuFrequency = 1,
+                cpuName = "default"
+            ))
+        )
+        (tariffStorage.findTariffById(1) match
+            case _: ErrorMonad[TariffNotFound, _] => tariffStorage.add(tariff)
+            case _: ResultMonad[_, _] => tariffStorage.update(tariff))
+        .flatMap(_ => tariffStorage.findTariffById(1))
+    }
+
     test("Should get location from game server"){
         val gameServerStorage = injector.instanceOf(classOf[GameServersStorage])
         val tariffsStorage = injector.instanceOf(classOf[TariffStorage])
+        val locationStorage = injector.instanceOf(classOf[LocationsStorage])
+        val gamesStorage = injector.instanceOf(classOf[GamesStorage])
         val user = createTestUserIfNeeded("should_get_location_from_game_server")
-        user.flatMap(u => {
+        val locationMonad = user.zipWith(
+            addOrUpdateDefaultLocationToDatabase(locationStorage),
+            addOrUpdateDefaultGame(gamesStorage),
+            addOrUpdateDefaultTariffToDatabase(tariffsStorage, gamesStorage),
+        )
+        .flatMap((u, _, _, _) => {
             gameServerStorage.add(GameServer(
                 id = 0,
                 Date.from(Instant.now()),
@@ -75,27 +162,22 @@ class GameServerStorageTests extends munit.FunSuite{
                 uuid = "1234",
                 kind = "lalala",
                 version = "1",
-                game = ObjectObservator(Game(
-                    id = 0,
-                    creationDate = Date.from(Instant.now()),
-                    name = "Minecraft",
-                    description = "minecraft",
-                    iconUri = "none",
-                    tariffs = ???
-                )),
-                location = ObjectObservator(Location(
-                    1,
-                    Date.from(Instant.now()),
-                    "Default",
-                    "Yandex, Russia",
-                    "127.0.0.1"
-                )),
+                location = DatabaseObservator(() => locationStorage.findLocationById(1)),
                 isPublic = false,
                 isActiveVm = false,
                 isActiveServer = false,
-                tariff = DatabaseObservator(() => tariffsStorage.findById(0)),
-                ports = ???
+                tariff = DatabaseObservator(() => tariffsStorage.findById(1)),
+                ports = ObjectObservator(Seq.empty)
             ))
         })
+        .flatMap(_ => gameServerStorage.findByHash("1234"))
+        .flatMap(s => s.location.get)
+        
+        val (err, location) = locationMonad.tryGetValue
+        if (err != null)
+            fail(err.toString())
+        else {
+            assert(location.description == "Yandex, Russia")
+        }
     }
 }
