@@ -80,3 +80,4 @@ class SlickGameStorage @Inject() (db: Database, operationTimeout: Duration) exte
 extension (storage: GamesStorage)
     def findById(id: Long): Monad[Exception | GameNotFound, Game] =
         storage.find(g => g.id === id).flatMap(gs => if gs.isEmpty then ErrorMonad(GameNotFound()) else ResultMonad(gs.head))
+    def getAll(): Monad[Exception, Seq[Game]] = storage.find(_.id =!= 0L)

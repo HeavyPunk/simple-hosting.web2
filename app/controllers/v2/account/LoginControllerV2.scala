@@ -3,8 +3,6 @@ package controllers.v2.account
 import com.google.inject.Inject
 import components.services.serializer.JsonService
 import play.api.mvc.ControllerComponents
-import business.services.storages.users.UserStorage
-import business.services.storages.session.SessionStorage
 import controllers.v2.SimpleHostingController
 import play.api.mvc.AnyContent
 import play.api.mvc.Request
@@ -28,9 +26,7 @@ import controllers.v2.JsonCannotBeParsed
 import controllers.v2.UserNotFoundForRequest
 import components.services.business.GetCurrentUserResponse
 import components.services.business.LogoutUserRequest
-import business.services.storages.session.SessionNotFoundError
 import components.services.log.Log
-import business.services.storages.users.UserNotFoundException
 import components.services.business.LoginUserRequest
 import business.services.slickStorages.user.{
     UserStorage => SUserStorage,
@@ -43,11 +39,10 @@ import java.time.Instant
 import business.entities.newEntity.UserSession
 import business.services.slickStorages.user.UserNotFound
 import business.entities.ObjectObservator
+import components.basic.enrichWith
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
-    val userStorage: UserStorage,
-    val sessionStorage: SessionStorage,
     val sUserStorage: SUserStorage,
     val jsonizer: JsonService,
     val log: Log
@@ -159,16 +154,16 @@ class LoginControllerV2 @Inject() (
     }}
 
     def logout() = Action.async { implicit request: Request[AnyContent] => {
-        val session = getModelFromJsonRequest[LogoutUserRequest](request)
-            .flatMap(req => sessionStorage.findByToken(req.authToken))
+        val user = getModelFromJsonRequest[LogoutUserRequest](request)
+            .flatMap(req => sUserStorage.findByToken(req.authToken))
 
-        val user = session
-            .flatMap(s => if (s == null) null else userStorage.findBySession(s))
-
-        val result = session.zipWith(user)
-            .flatMap((s, u) => sessionStorage.remove(s))
-            .zipWith(user)
-            .flatMap((sessionSaved, u) => userStorage.update(u))
+        val result = user
+            .enrichWith(u => u.session.get)
+            .flatMap((u, s) => {
+                s.token = UUID.fromString("00000000-0000-0000-0000-000000000000")
+                sUserStorage.update(u)
+            })
+            
         
         val (err, _) = result.tryGetValue
         if (err != null)
@@ -176,8 +171,7 @@ class LoginControllerV2 @Inject() (
                 case _: RequestBodyNotFound => wrapToFuture(BadRequest("Request must have a body"))
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest("Request body must be json object"))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest("Json is invalid"))
-                case _: SessionNotFoundError => wrapToFuture(BadRequest("You should specify user session token"))
-                case _: UserNotFoundException => wrapToFuture(BadRequest("User for this token not found"))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User with this login not found")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else
             wrapToFuture(Ok)

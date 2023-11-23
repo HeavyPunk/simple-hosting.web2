@@ -83,3 +83,4 @@ class SlickLocationsStorage(db: Database, operationTimeout: Duration) extends Lo
 extension (storage: LocationsStorage)
     def findById(id: Long): Monad[LocationNotFound | Exception, Location] =
         storage.find(_.id === id).flatMap(ls => if ls.isEmpty then ErrorMonad(LocationNotFound()) else ResultMonad(ls.head))
+    def getAll(): Monad[Exception, Seq[Location]] = storage.find(_.id =!= 0L)
