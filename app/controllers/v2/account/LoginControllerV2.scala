@@ -91,18 +91,19 @@ class LoginControllerV2 @Inject() (
 
             val result = 
                 user
-                .flatMap(u => sUserStorage.add(u)).zipWith(user)
-                .flatMap((_, u) => u.session.get).zipWith(user)
-                .flatMap((session, user) => ResultMonad(jsonizer.serialize(LoginUserResponse(
-                    session.token.toString(),
-                    UserModel(
-                        user.id,
-                        user.email,
-                        user.login,
-                        user.isAdmin,
-                        user.avatarUrl.getOrElse("")
-                    )
-                ))))
+                    .enrichWith(u => sUserStorage.add(u))
+                    .flatMap((u, _) => sUserStorage.findByLogin(u.login))
+                    .enrichWith(u => u.session.get)
+                    .flatMap((user, session) => ResultMonad(jsonizer.serialize(LoginUserResponse(
+                        session.token.toString(),
+                        UserModel(
+                            user.id,
+                            user.email,
+                            user.login,
+                            user.isAdmin,
+                            user.avatarUrl.getOrElse("")
+                        )
+                    ))))
             
             val (err, response) = result.tryGetValue
             if (err != null)
@@ -110,6 +111,7 @@ class LoginControllerV2 @Inject() (
                     case _: RequestBodyNotFound => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
                     case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
                     case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("Request body must be a json")))
+                    case _: UserNotFound => wrapToFuture(BadRequest(serializeError("Registered user not found in database")))
                     case _: Exception => wrapToFuture(InternalServerError(serializeError("Server error")))
             else
                 wrapToFuture(Created(response))

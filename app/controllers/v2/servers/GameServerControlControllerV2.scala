@@ -332,11 +332,14 @@ class GameServerControlControllerV2 @Inject() (
         else wrapToFuture(Ok)
     }}
 
-    def getUserServers(isPublic: String) = Action.async { implicit request => {
+    def getPublicUserServers = getUserServers(isPublic = true)
+    def getPrivateUserServers = getUserServers(isPublic = false)
+
+    def getUserServers(isPublic: Boolean) = Action.async { implicit request => {
         val req = getModelFromJsonRequest[GetUserServersRequest](request)
         val user = findUserForCurrentRequest(request)
         val result = req.zipWith(user).flatMap((r, u) => {
-            if(isPublic.toBoolean)
+            if(isPublic)
                 gameServerStorage.findPublicServers(r.kind)
             else gameServerStorage.findServersByOwner(u)
         })
