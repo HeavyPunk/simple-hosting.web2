@@ -139,6 +139,7 @@ class CommonServersManagementService @Inject() (
                         )
                     },
                     isSuccess = p => p.isDefined,
+                    attempts = 10,
                     delay = Duration.ofSeconds(2),
                     onAttempt = a => log.info(s"Attempting to connect to controller of server ${s.slug}, attempt $a")
                 )

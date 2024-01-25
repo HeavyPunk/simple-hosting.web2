@@ -36,3 +36,11 @@ POST /api/v2/server/stop controllers.v2.servers.GameServerControlControllerV2.st
 POST /api/v2/server/:hash controllers.v2.servers.GameServerControlControllerV2.getUserServerByHash(hash)
 POST /api/v2/server/:hash/remove controllers.v2.servers.GameServerControlControllerV2.removeVm(hash)
 POST /api/v2/server/:hash/restart controllers.v2.servers.GameServerControlControllerV2.restartVm(hash)
+
+POST /api/v2/files/upload/:hash controllers.v2.files.FilesControllerV2.upload(hash)
+GET /api/v2/files/get-task-status/:taskId controllers.v2.files.FilesControllerV2.checkForTask(taskId)
+POST /api/v2/files/delete-file controllers.v2.files.FilesControllerV2.deleteFile()
+POST /api/v2/files/create-file controllers.v2.files.FilesControllerV2.createFile()
+POST /api/v2/files/create-directory controllers.v2.files.FilesControllerV2.createDirectory()
+POST /api/v2/files/list-directory controllers.v2.files.FilesControllerV2.listDirectory()
+POST /api/v2/files/get-file-content controllers.v2.files.FilesControllerV2.getFileContent()

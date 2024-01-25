@@ -24,6 +24,14 @@ import components.clients.controller.ControllerClientFactory
 import play.api.Configuration
 import play.api.Environment
 import components.clients.compositor.CompositorClientWrapper
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import components.clients.juggernaut.JuggernautClient
+import java.time.Duration
 
 class ClientsModule(
   environment: Environment,
@@ -57,5 +65,24 @@ class ClientsModule(
     val controllerClientPort = configuration.get[Int]("app.clients.controller.port")
     val controllerClientBaseSettings = new Settings("http", "127.0.0.1", 8989)
     bind(classOf[Settings]).toInstance(controllerClientBaseSettings)
+
+    //-----------------------------
+    val s3AccessKey = configuration.get[String]("app.clients.s3.accesskey")
+    val s3SecretKey = configuration.get[String]("app.clients.s3.secretkey")
+    val s3Endpoint = configuration.get[String]("app.clients.s3.endpoint")
+    val awsCredentials = BasicAWSCredentials(s3AccessKey, s3SecretKey)
+    val amazonS3Client = AmazonS3ClientBuilder
+      .standard()
+      .withCredentials(AWSStaticCredentialsProvider(awsCredentials))
+      .withEndpointConfiguration(EndpointConfiguration(s3Endpoint, "us-east-1"))
+      .withPathStyleAccessEnabled(true) //NOTE: без этой хуйни minio не робит 
+      .build()
+    bind(classOf[AmazonS3]).toInstance(amazonS3Client)
+
+    //----------------------------
+    val juggernautScheme = configuration.get[String]("app.clients.juggernaut.scheme")
+    val juggernautHost = configuration.get[String]("app.clients.juggernaut.host")
+    val juggernautPort = configuration.get[Int]("app.clients.juggernaut.port")
+    bind(classOf[JuggernautClient]).toInstance(JuggernautClient(juggernautScheme, juggernautHost, juggernautPort, Duration.ofMinutes(2)))
   }
 }

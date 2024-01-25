@@ -1,7 +1,6 @@
 package components.services.business
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import business.entities.User
 
 case class RegisterUserRequest (
     val login: String,

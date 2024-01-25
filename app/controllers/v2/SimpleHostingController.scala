@@ -24,7 +24,7 @@ class JsonCannotBeParsed
 abstract class SimpleHostingController(jsonizer: JsonService) extends BaseController:
     def serializeError(error: String, success: Boolean = false) = jsonizer.serialize(MessageResponse(error, success))
 
-    def findUserForCurrentRequest(request: Request[AnyContent]): Monad[UserNotFoundForRequest, User] =
+    def findUserForCurrentRequest(request: Request[_]): Monad[UserNotFoundForRequest, User] =
         val user = request.attrs.get(UserTypedKey.key)
         user match
             case None => ErrorMonad(UserNotFoundForRequest())

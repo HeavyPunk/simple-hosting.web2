@@ -1,45 +1,45 @@
 package controllers.v2.account
 
-import com.google.inject.Inject
-import components.services.serializer.JsonService
-import play.api.mvc.ControllerComponents
-import controllers.v2.SimpleHostingController
-import play.api.mvc.AnyContent
-import play.api.mvc.Request
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
-import play.api.mvc.BaseController
-import scala.concurrent.Future
-import components.services.business.RegisterUserRequest
-import components.basic.{
-    mapToMonad,
-    zipWith,
-    serializeForLog
-}
-import components.services.hasher.PasswordHasher
-import components.basic.ResultMonad
-import java.util.UUID
-import components.services.business.LoginUserResponse
-import components.services.business.UserModel
-import controllers.v2.RequestBodyNotFound
-import controllers.v2.JsonNotFoundForRequestBody
-import controllers.v2.JsonCannotBeParsed
-import controllers.v2.UserNotFoundForRequest
-import components.services.business.GetCurrentUserResponse
-import components.services.business.LogoutUserRequest
-import components.services.log.Log
-import components.services.business.LoginUserRequest
-import business.services.slickStorages.user.{
-    UserStorage => SUserStorage,
-    findByEmail,
-    findByLogin,
-}
+import business.entities.ObjectObservator
 import business.entities.newEntity.User
-import java.util.Date
-import java.time.Instant
 import business.entities.newEntity.UserSession
 import business.services.slickStorages.user.UserNotFound
-import business.entities.ObjectObservator
+import business.services.slickStorages.user.findByEmail
+import business.services.slickStorages.user.findByLogin
+import business.services.slickStorages.user.{UserStorage => SUserStorage}
+import com.google.inject.Inject
+import components.basic.ResultMonad
 import components.basic.enrichWith
+import components.basic.mapToMonad
+import components.basic.serializeForLog
+import components.basic.zipWith
+import components.services.business.GetCurrentUserResponse
+import components.services.business.LoginUserRequest
+import components.services.business.LoginUserResponse
+import components.services.business.LogoutUserRequest
+import components.services.business.RegisterUserRequest
+import components.services.business.UserModel
+import components.services.hasher.PasswordHasher
+import components.services.log.Log
+import components.services.serializer.JsonService
+import controllers.v2.JsonCannotBeParsed
+import controllers.v2.JsonNotFoundForRequestBody
+import controllers.v2.RequestBodyNotFound
+import controllers.v2.SimpleHostingController
+import controllers.v2.UserNotFoundForRequest
+import play.api.mvc.AnyContent
+import play.api.mvc.BaseController
+import play.api.mvc.ControllerComponents
+import play.api.mvc.Request
+
+import java.time.Instant
+import java.util.Date
+import java.util.UUID
+import scala.concurrent.Future
+import components.basic.ErrorMonad
+
+class UserPasswordWrong
 
 class LoginControllerV2 @Inject() (
     val controllerComponents: ControllerComponents,
@@ -119,8 +119,11 @@ class LoginControllerV2 @Inject() (
     }}
 
     def login() = Action.async { implicit request: Request[AnyContent] => {
-        val user = getModelFromJsonRequest[LoginUserRequest](request)
-            .flatMap(req => sUserStorage.findByLogin(req.login))
+        val req = getModelFromJsonRequest[LoginUserRequest](request)
+        val user = req
+            .flatMap(req => sUserStorage.findByLogin(req.login)).zipWith(req)
+            .flatMap((u, r) => if u.passwdHash.equals(PasswordHasher.hash(r.password)) then ResultMonad(u) else ErrorMonad(UserPasswordWrong()))
+        
         val session = user
             .flatMap(u => u.session.get)
         val userUpdateAction = session
@@ -151,6 +154,7 @@ class LoginControllerV2 @Inject() (
                 case _: JsonNotFoundForRequestBody => wrapToFuture(BadRequest(serializeError("You should specify a user's password and login")))
                 case _: JsonCannotBeParsed => wrapToFuture(BadRequest(serializeError("Request body must be a json")))
                 case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User with this login not found")))
+                case _: UserPasswordWrong => wrapToFuture(BadRequest(serializeError("You entered the wrong password")))
                 case _: Exception => wrapToFuture(InternalServerError(serializeError("Server error")))
         else wrapToFuture(Ok(jsonizer.serialize(response)))
     }}

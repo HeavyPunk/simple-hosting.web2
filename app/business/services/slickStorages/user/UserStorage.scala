@@ -21,6 +21,7 @@ import java.util.UUID
 import java.util.concurrent.TimeoutException
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import com.google.inject.Inject
 
 class UserNotFound
 
@@ -28,7 +29,7 @@ trait UserStorage extends BaseStorage[User, UsersTable, Exception, Exception, Ex
     def findByToken(token: String): Monad[UserNotFound | Exception, User]
 
 
-class SlickUserStorage(db: Database, operationTimeout: Duration) extends UserStorage {
+class SlickUserStorage @Inject() (db: Database, operationTimeout: Duration) extends UserStorage {
     override def create(modifier: User => Unit = null): User = {
         val creationDate = Date.from(Instant.now())
         val user = User(

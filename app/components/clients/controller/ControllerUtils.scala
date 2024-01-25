@@ -3,6 +3,7 @@ package components.clients.controller
 import io.github.heavypunk.controller.client.ControllerClient
 import io.github.heavypunk.controller.client.Settings
 import java.io.IOException
+import java.time.Duration
 
 object ControllerUtils {
     def findControllerPort(input: Seq[String], controllerClientFactory: ControllerClientFactory, controllerBaseSettings: Settings): Option[Int] = {
@@ -30,7 +31,7 @@ object ControllerUtils {
                 controllerBaseSettings.host,
                 controllerBaseSettings.port
             ))
-            client.state.ping().success
+            client.state.ping().success && client.servers.checkServerRunning(Duration.ofMinutes(2)).isRunning
         } catch {
             case e: Exception => false
         }

@@ -17,12 +17,18 @@ import slick.lifted.Rep
 import java.util.Date
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import business.services.slickStorages.tariff.SlickTariffStorage
 
 class GameNotFound
 
 trait GamesStorage extends BaseStorage[Game, GamesTable, Exception, Exception, Exception, Exception]
 
-class SlickGameStorage @Inject() (db: Database, operationTimeout: Duration) extends GamesStorage {
+class SlickGameStorage @Inject() (
+    db: Database,
+    operationTimeout: Duration,
+) extends GamesStorage {
+
+    val tariffsStorage: TariffStorage = SlickTariffStorage(db, operationTimeout, this) //TODO: Прикол для избавления от цикличной зависимости
     override def create(modifier: Game => Unit = null): Game = ???
     override def add(item: Game): Monad[Exception, Boolean] = {
         try {
@@ -67,7 +73,7 @@ class SlickGameStorage @Inject() (db: Database, operationTimeout: Duration) exte
                 name = game.name,
                 description = game.description,
                 iconUri = game.iconUri,
-                tariffs = ObjectObservator(Seq.empty) // тут возникает цикл в зависимостях, если использовать tariffStorage, нужно подумать как этого избежать
+                tariffs = DatabaseObservator(() => tariffsStorage.find(tariff => tariff.gameId === game.id))
             )
             ResultMonad(games)
         } catch {

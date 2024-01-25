@@ -23,12 +23,15 @@ import components.basic.enrichWith
 import business.entities.newEntity.Location
 import business.entities.newEntity.Tariff
 import business.services.slickStorages.games.GameNotFound
+import components.services.log.Log
+import components.basic.serializeForLog
 
 class TariffController @Inject() (
     val controllerComponents: ControllerComponents,
     val gamesStorage: GamesStorage,
     val locationStorage: LocationsStorage,
-    val jsonizer: JsonService
+    val jsonizer: JsonService,
+    val log: Log,
 ) extends SimpleHostingController(jsonizer):
     def getTariffsForGame(gameId: Long) = Action.async { implicit request => {
         val game = gamesStorage.findGameById(gameId)
@@ -72,7 +75,7 @@ class TariffController @Inject() (
         if (err != null)
             err match
                 case _: GameNotFound => wrapToFuture(BadRequest(serializeError(s"Game $gameId not found")))
-                case e: Exception => wrapToFuture(InternalServerError(serializeError("InternalServerError")))
+                case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError(serializeError("InternalServerError")))
         else wrapToFuture(Ok(jsonizer.serialize(resp)))
     }}
 

@@ -44,6 +44,7 @@ import java.util.Date
 import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import com.google.inject.Inject
 
 class GameServerNotFound
 
@@ -56,13 +57,13 @@ trait GameServersStorage extends BaseStorage[
     Exception
 ]
 
-class SlickGameServersStorage(
+class SlickGameServersStorage @Inject() (
     db: Database,
     operationTimeout: Duration,
     userStorage: UserStorage,
     tariffStorage: TariffStorage,
     gamesStorage: GamesStorage,
-) extends GameServersStorage{
+) extends GameServersStorage {
     override def create(modifier: GameServer => Unit = null): GameServer = {
         val creationDate = Date.from(Instant.now())
         val gameServer = GameServer(
@@ -251,9 +252,11 @@ extension (storage: GameServersStorage){
         storage.find(s => s.name === name).flatMap(s => if s.length == 0 then ErrorMonad(GameServerNotFound()) else ResultMonad(s.head))
     def findServersByOwner(owner: User): Monad[Exception, Seq[GameServer]] =
         storage.find(s => s.ownerId === owner.id)
-    def findPublicServers(kind: String): Monad[Exception, Seq[GameServer]] = ???
+    def findPublicServers(kind: String): Monad[Exception, Seq[GameServer]] = 
+        storage.find(s => s.isPublic === true)
     def findByHash(hash: String): Monad[GameServerNotFound | Exception, GameServer] =
         storage.find(s => s.uuid === hash).flatMap(s => if s.isEmpty then ErrorMonad(GameServerNotFound()) else ResultMonad(s.head))
-    def removeById(serverId: Long): Monad[Exception, Boolean] = ???
+    def removeById(serverId: Long): Monad[Exception, Boolean] = 
+        storage.remove(s => s.id === serverId)
     def removeAll(): Monad[Exception, Boolean] = storage.remove(st => st.id =!= 0L)
 }

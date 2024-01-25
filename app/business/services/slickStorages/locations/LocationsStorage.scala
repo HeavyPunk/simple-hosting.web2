@@ -14,12 +14,13 @@ import slick.lifted.TableQuery
 import java.util.Date
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import com.google.inject.Inject
 
 class LocationNotFound
 
 trait LocationsStorage extends BaseStorage[Location, LocationsTable, Exception, Exception, Exception, Exception]
 
-class SlickLocationsStorage(db: Database, operationTimeout: Duration) extends LocationsStorage {
+class SlickLocationsStorage @Inject()(db: Database, operationTimeout: Duration) extends LocationsStorage {
     override def create(modifier: Location => Unit = null): Location = ???
     override def add(item: Location): Monad[Exception, Boolean] = {
         try {

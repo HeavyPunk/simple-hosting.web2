@@ -19,23 +19,18 @@ libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "6.0.0
 libraryDependencies += "org.apache.httpcomponents.client5" % "httpclient5"          % "5.2.1"
 libraryDependencies += "com.fasterxml.jackson.module"     %% "jackson-module-scala" % "2.14.1"
 libraryDependencies += "io.github.heavypunk" %% "simple-hosting.compositor.client" % "20.04.23.1" from "https://github.com/HeavyPunk/simple-hosting.compositor.client/raw/main/build/simplehosting-compositor-client-20.04.23.1.jar"
-libraryDependencies += "io.github.heavypunk" %% "simple-hosting.controller.client" % "06.14.23.1" from "https://github.com/HeavyPunk/simple-hosting.controller.client/raw/master/build/simple-hosting-controller-client_2.13-06.14.23.1.jar"
-
-//Hibernate dependency
-libraryDependencies ++= Seq(
-    "org.hibernate" % "hibernate-core" % "6.2.3.Final",
-    "org.hibernate" % "hibernate-entitymanager" % "4.1.8.Final",
-    "org.hibernate" % "hibernate-c3p0" % "6.2.3.Final",
-    // https://mvnrepository.com/artifact/org.postgresql/postgresql
-    "org.postgresql" % "postgresql" % "42.5.1",
-)
+libraryDependencies += "io.github.heavypunk" %% "simple-hosting.controller.client" % "06.14.23.1" from "https://github.com/HeavyPunk/simple-hosting.controller.client/raw/master/build/simple-hosting-controller-client_2.13-01.22.24.1.jar"
 
 // Slick
 libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick" % "3.5.0-M4",
   "org.slf4j" % "slf4j-nop" % "1.7.26",
-  "com.typesafe.slick" %% "slick-hikaricp" % "3.5.0-M4"
+  "com.typesafe.slick" %% "slick-hikaricp" % "3.5.0-M4",
+  "org.postgresql" % "postgresql" % "42.5.1",
 )
+
+// S3
+libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.12.609";
 
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "com.simplehosting.controllers._"

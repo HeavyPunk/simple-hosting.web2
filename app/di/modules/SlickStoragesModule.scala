@@ -23,15 +23,12 @@ class SlickStoragesModule extends AbstractModule {
         val databaseInitializer = SlickDatabaseInitializer()
         databaseInitializer.initDatabase(db, operationTimeout)
 
-        val userStorage = SlickUserStorage(db, operationTimeout)
-        val gamesStorage = SlickGameStorage(db, operationTimeout)
-        val locationsStorage = SlickLocationsStorage(db, operationTimeout)
-        val tariffStorage = SlickTariffStorage(db, operationTimeout, gamesStorage)
-        val gameServersStorage = SlickGameServersStorage(db, operationTimeout, userStorage, tariffStorage, gamesStorage)
-        bind(classOf[UserStorage]).toInstance(userStorage)
-        bind(classOf[GamesStorage]).toInstance(gamesStorage)
-        bind(classOf[LocationsStorage]).toInstance(locationsStorage)
-        bind(classOf[TariffStorage]).toInstance(tariffStorage)
-        bind(classOf[GameServersStorage]).toInstance(gameServersStorage)
+        bind(classOf[Database]).toInstance(db)
+        bind(classOf[Duration]).toInstance(operationTimeout) //TODO: Не круто регать почти примитив в общий скоуп
+        bind(classOf[UserStorage]).to(classOf[SlickUserStorage])
+        bind(classOf[GamesStorage]).to(classOf[SlickGameStorage])
+        bind(classOf[LocationsStorage]).to(classOf[SlickLocationsStorage])
+        bind(classOf[TariffStorage]).to(classOf[SlickTariffStorage])
+        bind(classOf[GameServersStorage]).to(classOf[SlickGameServersStorage])
     }
 }

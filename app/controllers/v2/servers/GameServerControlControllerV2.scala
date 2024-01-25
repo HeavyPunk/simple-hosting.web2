@@ -86,6 +86,7 @@ import business.services.slickStorages.user.UserNotFound
 
 class TariffHasInvalidFormat
 class AccessDenied
+class ServerDisabled
 class ErrorWhenGettingLogs(val response: GetServerLogsResponse)
 class ErrorWhenSendingMessageToServer(val response: SendMessageResponse)
 class ErrorWhenGettingServerInfo(val response: GetServerInfoResponse)
@@ -304,6 +305,9 @@ class GameServerControlControllerV2 @Inject() (
             err match 
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: VmNotFound => wrapToFuture(BadRequest(serializeError("Server not found. Maybe you don't have access to this server")))
+                case _: TariffNotFound => wrapToFuture(BadRequest(serializeError("Tariff not found")))
+                case _: UserNotFound => wrapToFuture(BadRequest(serializeError("User not found")))
+                case _: LocationNotFound => wrapToFuture(BadRequest(serializeError("Location not found")))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(""))
     }}
@@ -383,7 +387,11 @@ class GameServerControlControllerV2 @Inject() (
                 s.kind,
                 s.ip,
                 s.ports.get.tryGetValue._2.toArray,
-                s.isActiveServer
+                ControllerUtils.checkForServerRunning(controllerClientFactory, Settings(
+                    controllerClientSettings.scheme,
+                    controllerClientSettings.host,
+                    s.ports.get.tryGetValue._2.find(_.portKind.equals("controller")).get.port
+                ))
             )))
         
         val (err, serv) = result.tryGetValue
@@ -392,7 +400,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
-                case e: Exception => wrapToFuture(InternalServerError(serializeError("InternalServerError")))
+                case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError(serializeError("InternalServerError")))
         else wrapToFuture(Ok(jsonizer.serialize(serv)))
     }}
 
@@ -452,14 +460,19 @@ class GameServerControlControllerV2 @Inject() (
         val user = findUserForCurrentRequest(request)
         val grantedGameServer = gameServer.zipWith(user)
             .flatMap((s, u) => if (s.owner.get.tryGetValue._2.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
-        
-        val controllerClient = grantedGameServer.flatMap(s =>
-            ResultMonad(controllerClientFactory.getControllerClient(Settings(
-                controllerClientSettings.scheme,
-                s.ip,
-                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
+
+        val controllerClientSettingsMonad = grantedGameServer.flatMap(s =>
+            ResultMonad(
+                Settings(
+                    controllerClientSettings.scheme,
+                    s.ip,
+                    s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
+        val isServerRunning = controllerClientSettingsMonad.flatMap(settings => if ControllerUtils.checkForServerRunning(controllerClientFactory, settings) then ResultMonad(()) else ErrorMonad(ServerDisabled()))
+        val controllerClient = controllerClientSettingsMonad.zipWith(isServerRunning).flatMap((settings, _) =>
+            ResultMonad(controllerClientFactory.getControllerClient(settings))
         )
+        
         val result = controllerClient.zipWith(req)
             .flatMap((cc, r) => {
                 val response = cc.servers.getServerInfo(io.github.heavypunk.controller.client.contracts.server.GetServerInfoRequest(
@@ -478,6 +491,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
+                case _: ServerDisabled => wrapToFuture(BadRequest(serializeError("Server is disabled")))
                 case e: ErrorWhenGettingServerInfo => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(jsonizer.serialize(response)))
@@ -490,12 +504,16 @@ class GameServerControlControllerV2 @Inject() (
         val grantedGameServer = gameServer.zipWith(user)
             .flatMap((s, u) => if (s.owner.get.tryGetValue._2.id == u.id) ResultMonad(s) else ErrorMonad(AccessDenied()))
         
-        val controllerClient = grantedGameServer.flatMap(s =>
-            ResultMonad(controllerClientFactory.getControllerClient(Settings(
-                controllerClientSettings.scheme,
-                s.ip,
-                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
+        val controllerClientSettingsMonad = grantedGameServer.flatMap(s =>
+            ResultMonad(
+                Settings(
+                    controllerClientSettings.scheme,
+                    s.ip,
+                    s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
+        val isServerRunning = controllerClientSettingsMonad.flatMap(settings => if ControllerUtils.checkForServerRunning(controllerClientFactory, settings) then ResultMonad(()) else ErrorMonad(ServerDisabled()))
+        val controllerClient = controllerClientSettingsMonad.zipWith(isServerRunning).flatMap((settings, _) =>
+            ResultMonad(controllerClientFactory.getControllerClient(settings))
         )
         val result = controllerClient.zipWith(req)
             .flatMap((cc, r) => {
@@ -516,6 +534,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
+                case _: ServerDisabled => wrapToFuture(BadRequest(serializeError("Server is disabled")))
                 case e: ErrorWhenSendingMessageToServer => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(jsonizer.serialize(response)))
@@ -533,13 +552,18 @@ class GameServerControlControllerV2 @Inject() (
                 else ErrorMonad(AccessDenied())
             })
 
-        val controllerClient = grantedGameServer.flatMap(s =>
-            ResultMonad(controllerClientFactory.getControllerClient(Settings(
-                controllerClientSettings.scheme,
-                s.ip,
-                s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
+        val controllerClientSettingsMonad = grantedGameServer.flatMap(s =>
+            ResultMonad(
+                Settings(
+                    controllerClientSettings.scheme,
+                    s.ip,
+                    s.ports.get.tryGetValue._2.find(_.portKind.equalsIgnoreCase("controller")).get.port
             )))
+        val isServerRunning = controllerClientSettingsMonad.flatMap(settings => if ControllerUtils.checkForServerRunning(controllerClientFactory, settings) then ResultMonad(()) else ErrorMonad(ServerDisabled()))
+        val controllerClient = controllerClientSettingsMonad.zipWith(isServerRunning).flatMap((settings, _) =>
+            ResultMonad(controllerClientFactory.getControllerClient(settings))
         )
+        
         val result = controllerClient.zipWith(req)
             .flatMap((cc, r) => {
                 val response = if (r.isLastLogs) cc.servers.getServerLogsLastPage(Duration.ofMinutes(2))
@@ -556,6 +580,7 @@ class GameServerControlControllerV2 @Inject() (
                 case _: UserNotFoundForRequest => wrapToFuture(BadRequest(serializeError("You must provide user token in X-Auth-Token header")))
                 case _: GameServerNotFound => wrapToFuture(BadRequest(serializeError("Game server not found")))
                 case _: AccessDenied => wrapToFuture(Forbidden(serializeError("You don't have access to this server")))
+                case _: ServerDisabled => wrapToFuture(BadRequest(serializeError("Server is disabled")))
                 case e: ErrorWhenGettingLogs => wrapToFuture(InternalServerError(jsonizer.serialize(e)))
                 case e: Exception => log.error(e.serializeForLog); wrapToFuture(InternalServerError("InternalServerError"))
         else wrapToFuture(Ok(jsonizer.serialize(logs)))
